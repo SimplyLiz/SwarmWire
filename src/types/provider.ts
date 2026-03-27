@@ -39,6 +39,10 @@ export interface LlmRequest {
   /** Structured output — forces the model to respond with valid JSON matching the schema.
    *  OpenAI: maps to response_format. Anthropic: maps to tool_use with forced tool. */
   responseFormat?: ResponseFormat
+  /** Enable prompt caching for the system prompt.
+   *  Anthropic: adds cache_control breakpoint. OpenAI: automatic (enabled by default).
+   *  Can reduce input costs by up to 90% on repeated prompts. */
+  cacheSystemPrompt?: boolean
 }
 
 export interface ResponseFormat {

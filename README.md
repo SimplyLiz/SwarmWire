@@ -432,26 +432,307 @@ import {
 
 ---
 
+## Guardrails
+
+Input, output, and tool-level safety checks with fail-fast tripwires. Inspired by
+OpenAI Agents SDK. Guardrails run in `parallel` (default, lower latency) or
+`blocking` (sequential, safer) mode. A `block`-severity failure throws
+`GuardrailTripped` and cancels execution immediately; `warn` severity logs and
+continues. Sanitization guardrails can modify the value in flight.
+
+```typescript
+import {
+  piiGuardrail,
+  injectionGuardrail,
+  hallucinationGuardrail,
+  maxLengthGuardrail,
+  contentFilter,
+} from 'swarmwire'
+
+const agent = swarm.agent({
+  name: 'safe-agent',
+  role: 'Process user input safely',
+  guardrails: {
+    input: [piiGuardrail(), injectionGuardrail()],
+    output: [hallucinationGuardrail(), maxLengthGuardrail(10_000)],
+    toolInput: [contentFilter(['DROP TABLE', 'rm -rf'], 'block')],
+  },
+})
+```
+
+Built-in guardrails:
+
+| Guardrail | Phase | What it checks |
+|-----------|-------|---------------|
+| `piiGuardrail()` | input | Emails, SSNs, credit cards, phone numbers |
+| `injectionGuardrail()` | input | "Ignore previous instructions" and similar injection patterns |
+| `hallucinationGuardrail()` | output | Hedging markers ("as of my knowledge cutoff", etc.) |
+| `maxLengthGuardrail(n)` | output | Truncates output exceeding `n` chars (warn + sanitize) |
+| `contentFilter(strings[], severity)` | any | Blocks or warns on forbidden substrings |
+
+Custom guardrails implement the `Guardrail<T>` interface with a `check(value, context)` method.
+
+---
+
+## Evals Framework
+
+Automated quality metrics for agent outputs. Run evals against Record/Replay
+fixtures in CI/CD -- no LLM calls needed.
+
+```typescript
+import {
+  runEvalSuite,
+  nonEmpty,
+  lengthCheck,
+  containsKeywords,
+  schemaMatch,
+  similarityToExpected,
+  noRegression,
+  noHallucination,
+} from 'swarmwire'
+
+const suite = {
+  name: 'research-quality',
+  evals: [nonEmpty(), lengthCheck(100, 5000), containsKeywords(['TypeScript', 'ORM']), noHallucination()],
+  threshold: 0.8,          // average score must be >= 0.8
+  perEvalThreshold: 0.5,   // no individual eval below 0.5
+}
+
+const result = await runEvalSuite(suite, input, output, { expected: groundTruth })
+// result.passed, result.averageScore, result.failedEvals
+```
+
+Built-in metrics: `nonEmpty`, `lengthCheck`, `containsKeywords`, `schemaMatch`,
+`similarityToExpected` (Jaccard), `noRegression` (compare to prior run),
+`noHallucination`. All return 0-1 scores. `runEvalBatch` runs a suite against
+multiple test cases and reports an overall pass/fail.
+
+---
+
+## Record/Replay Testing
+
+Deterministic, zero-cost testing for multi-agent systems. Record real LLM
+interactions once, then replay them in CI forever -- instant, free, and
+reproducible. Fuzzy matching handles volatile fields (UUIDs, timestamps).
+
+```typescript
+import { RecordingProvider, ReplayProvider } from 'swarmwire'
+
+// 1. Record: wrap a real provider, run your workflow, save fixtures
+const recording = new RecordingProvider(realProvider, './fixtures/research.json')
+await swarm.run('Research TypeScript ORMs', { /* uses recording as provider */ })
+await recording.save()   // writes fixture file to disk
+
+// 2. Replay: load fixtures, run the same workflow with zero LLM calls
+const replay = new ReplayProvider('./fixtures/research.json')
+const result = await swarm.run('Research TypeScript ORMs', { /* uses replay */ })
+
+// 3. Assert: combine with evals
+const evalResult = await runEvalSuite(suite, input, result.output)
+expect(evalResult.passed).toBe(true)
+```
+
+`ReplayProvider` options: `strict` (throw on unmatched requests, default `true`),
+`fallback` (a real provider for partial replay), `simulatedLatencyMs`.
+
+---
+
+## New Providers
+
+### Gemini
+Uses Google's OpenAI-compatible endpoint. Models: `gemini-2.0-flash`, `gemini-2.5-pro`, `gemini-2.5-flash`.
+```typescript
+const gemini = createProvider('gemini', { apiKey: process.env.GOOGLE_API_KEY })
+```
+
+### Ollama (local)
+Local execution via Ollama's OpenAI-compatible API. Cost is always $0.
+Default models: `llama3.3`, `qwen3`, `deepseek-r1`.
+```typescript
+const ollama = createProvider('ollama')  // defaults to localhost:11434
+```
+
+### Generic OpenAI-compatible / LiteLLM
+Any unknown provider name falls through to the OpenAI adapter. Works with LiteLLM,
+vLLM, Azure OpenAI, or any endpoint that speaks the OpenAI chat completions API.
+```typescript
+const litellm = createProvider('litellm', {
+  baseUrl: 'http://localhost:4000/v1',
+  apiKey: process.env.LITELLM_KEY,
+})
+```
+
+---
+
+## Approval Gates
+
+Pause execution before a step and wait for human (or programmatic) approval.
+If no `onApproval` callback is provided, gates auto-approve.
+
+```typescript
+const plan = await swarm.plan('Deploy to production')
+
+// Add a gate to the deploy step
+plan.steps[2].gate = {
+  type: 'approval',
+  message: 'Approve deployment to prod?',
+  timeoutMs: 60_000,
+}
+
+const result = await swarm.execute(plan, {
+  onApproval: async (gate) => {
+    console.log(`[GATE] ${gate.agentName}: ${gate.message}`)
+    return userSaidYes ? 'approved' : 'rejected'
+  },
+})
+```
+
+---
+
+## Dry-Run Cost Projection
+
+Simulate plan execution without calling any LLMs. Returns cost/duration estimates
+with min/max/likely ranges, per-step breakdowns, parallelism analysis, and a
+`willExceedBudget` flag.
+
+```typescript
+import { dryRun } from 'swarmwire'
+
+const plan = await swarm.plan('Analyze codebase')
+const projection = dryRun(plan, providers)
+
+console.log(projection.estimatedCost)
+// { minCents: 12.5, maxCents: 50.0, likelyCents: 25.0 }
+console.log(projection.willExceedBudget)     // true/false
+console.log(projection.stepBreakdown)        // per-step cost + duration
+console.log(projection.sequentialDepth)      // critical path length
+```
+
+---
+
+## Output Contracts
+
+Schema + semantic validation of agent outputs. Catches syntactically valid but
+semantically garbage results. Supports Zod schemas, custom validation functions,
+and configurable failure actions (`retry`, `skip`, `fallback`, `escalate`).
+
+```typescript
+import { withContract, OutputContract } from 'swarmwire'
+
+const contract: OutputContract<{ summary: string; score: number }> = {
+  schema: z.object({ summary: z.string().min(10), score: z.number().min(0).max(1) }),
+  validate: async (output) => ({
+    valid: output.score > 0.3,
+    reason: output.score <= 0.3 ? 'Score too low — likely garbage output' : undefined,
+  }),
+  onFailure: 'retry',
+  maxRetries: 2,
+}
+
+const guardedExecute = withContract(agent.execute, contract)
+```
+
+Throws `ContractViolationError` when retries are exhausted and `onFailure` is
+`'retry'` or `'escalate'`.
+
+---
+
+## Model Cascade on Quality
+
+Per-agent model fallback that escalates to a smarter (more expensive) model when
+output quality is too low. Different from circuit breaker (which operates at the
+provider level on errors).
+
+```typescript
+import { chatWithCascade } from 'swarmwire'
+
+const result = await chatWithCascade(request, {
+  primary: { provider: 'anthropic', model: 'claude-haiku-4-20250414' },
+  fallbacks: [
+    { provider: 'anthropic', model: 'claude-sonnet-4-6-20260320', condition: 'quality' },
+    { provider: 'openai', model: 'gpt-4o', condition: 'both' },
+  ],
+  qualityThreshold: 0.6,
+  qualityEstimator: myQualityFn,
+}, providerMap)
+
+// result.escalated, result.modelUsed, result.modelsAttempted
+```
+
+---
+
+## Differential Execution
+
+Only re-run steps whose inputs changed. Compares a new plan against a previous
+`ExecutionResult`, identifies changed/reusable/cascade steps, and carries forward
+completed outputs.
+
+```typescript
+import { diffPlans, applyPreviousResults } from 'swarmwire'
+
+const diff = diffPlans(newPlan, previousResult)
+// diff.changedSteps, diff.reusableSteps, diff.cascadeSteps, diff.savingsFraction
+
+applyPreviousResults(newPlan, previousResult, diff)
+const result = await swarm.execute(newPlan)  // skips reusable steps
+```
+
+---
+
+## Structured Output
+
+Force the LLM to respond with valid JSON matching a schema. Available via
+`ctx.llm<T>()` inside any agent's `execute()` function. Works across providers:
+maps to `response_format` on OpenAI/Gemini and tool-use forcing on Anthropic.
+
+```typescript
+const agent = swarm.agent({
+  name: 'classifier',
+  role: 'Classify support tickets',
+  async execute(input: string, ctx: AgentContext) {
+    return ctx.llm<{ category: string; priority: number }>(input, {
+      responseFormat: {
+        type: 'json_schema',
+        schema: {
+          type: 'object',
+          properties: {
+            category: { type: 'string', enum: ['bug', 'feature', 'question'] },
+            priority: { type: 'number', minimum: 1, maximum: 5 },
+          },
+          required: ['category', 'priority'],
+        },
+      },
+    })
+  },
+})
+```
+
+---
+
 ## Architecture
 
 ```
 User Code
     |
     v
-  Swarm  ─────────────────────────────────────────────────
-    |          |           |          |          |
-  Planner   Router     Executor   Budget    Patterns
-  (DAG)    (cascade    (parallel   Engine   (orch-worker
-   |       semantic     runner)    (hard     pipeline
-  Scorer   cache        |         limits)   map-reduce
-   |       latency    Checkpoint              debate
-  Query    specul.)                           blackboard
-  Decomp.                                    evolving)
-    |          |           |          |
-    v          v           v          v
-  Providers     MessageBoard    MCP Tools     Memory
-  (Anthropic    (inter-agent    (any server)  (ANCS
-   OpenAI       communication)                or custom)
+  Swarm  ──────────────────────────────────────────────────────────
+    |          |           |            |          |          |
+  Planner   Router     Executor      Budget    Patterns   Guardrails
+  (DAG)    (cascade    (parallel      Engine   (orch-wkr   (input
+   |       semantic     runner        (hard     pipeline    output
+  Scorer   cache        dry-run       limits)   map-reduce  tool)
+   |       latency      diff-exec       |       debate
+  Query    specul.)     checkpoint      |       blackboard
+  Decomp.  model-       approval        |       evolving)
+           cascade      gates)          |
+    |          |           |            |          |          |
+    v          v           v            v          v          v
+  Providers     MessageBoard    MCP Tools     Memory    Testing
+  (Anthropic    (inter-agent    (any server)  (ANCS    (Record/Replay
+   OpenAI       communication)                or       Evals
+   Gemini                                     custom)  Contracts)
+   Ollama
+   LiteLLM/generic
    +circuit breaker
    +rate limiter
    +failover)
@@ -461,7 +742,7 @@ User Code
 
 ## Project Stats
 
-68 modules | 25 test files | 210 tests | 7 agent templates
+81 modules | 29 test files | 265 tests | 7 agent templates
 
 ---
 

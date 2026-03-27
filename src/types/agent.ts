@@ -6,6 +6,7 @@
 import type { Budget } from './budget.js'
 import type { Tool } from './tool.js'
 import type { ModelConfig, ModelTier, ResponseFormat } from './provider.js'
+import type { GuardrailConfig } from '../core/guardrails.js'
 
 export interface AgentContext {
   /** Unique execution ID */
@@ -69,6 +70,7 @@ export interface AgentDefinition<TInput = unknown, TOutput = unknown> {
   maxTokens?: number
   maxCostCents?: number
   timeoutMs?: number
+  guardrails?: GuardrailConfig
   execute?: (input: TInput, context: AgentContext) => Promise<TOutput>
 }
 
@@ -84,6 +86,7 @@ export interface Agent<TInput = unknown, TOutput = unknown> {
   readonly maxTokens?: number
   readonly maxCostCents?: number
   readonly timeoutMs?: number
+  readonly guardrails?: GuardrailConfig
   execute(input: TInput, context: AgentContext): Promise<TOutput>
 }
 

@@ -81,7 +81,14 @@ export function createAnthropicProvider(config: ProviderConfig): Provider {
         max_tokens: request.maxTokens ?? 4096,
         messages,
       }
-      if (systemMsg) params.system = systemMsg
+      if (systemMsg) {
+        if (request.cacheSystemPrompt) {
+          // Anthropic prompt caching: wrap system in array with cache_control
+          params.system = [{ type: 'text', text: systemMsg, cache_control: { type: 'ephemeral' } }]
+        } else {
+          params.system = systemMsg
+        }
+      }
       if (request.temperature !== undefined) params.temperature = request.temperature
 
       // Structured output via forced tool_use

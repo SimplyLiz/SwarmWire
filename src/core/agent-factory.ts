@@ -25,6 +25,7 @@ export function createAgent<TInput = unknown, TOutput = unknown>(
     maxTokens: def.maxTokens,
     maxCostCents: def.maxCostCents,
     timeoutMs: def.timeoutMs,
+    guardrails: def.guardrails,
     execute: executeFn,
   }
 }

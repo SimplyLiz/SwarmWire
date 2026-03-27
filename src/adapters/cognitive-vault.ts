@@ -20,6 +20,7 @@
 
 import { MessageBoard } from '../core/messageboard.js'
 import type { Message, PostOptions } from '../core/messageboard.js'
+import { FileBoard } from './file-board.js'
 
 export interface CognitiveVaultBoardConfig {
   /** CV API base URL (e.g., https://cognitive-vault.com) */
@@ -32,6 +33,10 @@ export interface CognitiveVaultBoardConfig {
   sessionId?: string
   /** Whether to persist messages to CV (default: true) */
   persist?: boolean
+  /** Fall back to local file when CV is unreachable (default: true) */
+  fallbackToFile?: boolean
+  /** Path for file fallback (default: .swarmwire/board.jsonl) */
+  fallbackPath?: string
 }
 
 interface CVEntry {
@@ -45,6 +50,8 @@ interface CVEntry {
 export class CognitiveVaultBoard extends MessageBoard {
   private config: Required<CognitiveVaultBoardConfig>
   private persistQueue: Promise<void> = Promise.resolve()
+  private fallback: FileBoard | null
+  private cvAvailable: boolean | null = null // null = not checked yet
 
   constructor(config: CognitiveVaultBoardConfig) {
     super()
@@ -52,7 +59,12 @@ export class CognitiveVaultBoard extends MessageBoard {
       ...config,
       sessionId: config.sessionId ?? generateSessionId(),
       persist: config.persist ?? true,
+      fallbackToFile: config.fallbackToFile ?? true,
+      fallbackPath: config.fallbackPath ?? '.swarmwire/board.jsonl',
     }
+    this.fallback = this.config.fallbackToFile
+      ? new FileBoard({ path: this.config.fallbackPath, sessionId: this.config.sessionId, persist: true })
+      : null
   }
 
   /**
@@ -62,10 +74,14 @@ export class CognitiveVaultBoard extends MessageBoard {
     const msg = super.post(from, to, content, options)
 
     if (this.config.persist) {
-      // Fire-and-forget persist — don't block the caller
+      // Fire-and-forget persist — try CV, fall back to file
       this.persistQueue = this.persistQueue
         .then(() => this.persistMessage(msg))
-        .catch((err) => console.warn('[cv-board] persist failed:', err))
+        .catch((err) => {
+          console.warn('[cv-board] CV persist failed, falling back to file:', err.message ?? err)
+          this.cvAvailable = false
+          this.fallback?.post(from, to, content, options)
+        })
     }
 
     return msg
@@ -88,9 +104,11 @@ export class CognitiveVaultBoard extends MessageBoard {
     })
 
     if (!res.ok) {
-      console.warn('[cv-board] hydrate failed:', res.status)
-      return 0
+      console.warn('[cv-board] CV hydrate failed:', res.status, '— trying file fallback')
+      this.cvAvailable = false
+      return this.fallback ? this.fallback.hydrate(sid) : 0
     }
+    this.cvAvailable = true
 
     const body = await res.json() as { data: CVEntry[] }
     let count = 0

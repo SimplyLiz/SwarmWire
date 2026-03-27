@@ -12,6 +12,7 @@ import type { AgentBoard } from '../types/agent.js'
 import { isAgentRef } from '../types/plan.js'
 import { BudgetLedger } from '../budget/ledger.js'
 import { MessageBoard } from '../core/messageboard.js'
+import { runGuardrails, GuardrailTripped } from '../core/guardrails.js'
 
 export interface ExecutorConfig {
   providers: Provider[]
@@ -108,9 +109,31 @@ export async function executePlan<T = unknown>(
         config.emitEvent,
       )
 
+      // Run input guardrails (if configured)
+      let guardedInput = input
+      if (agent.guardrails?.input && agent.guardrails.input.length > 0) {
+        const inputGuardrailResult = await runGuardrails(
+          agent.guardrails.input,
+          input,
+          { phase: 'input', agentName: agent.name, executionId: plan.id, stepId: step.id },
+        )
+        if (inputGuardrailResult.sanitizedValue !== undefined) {
+          guardedInput = inputGuardrailResult.sanitizedValue
+        }
+      }
+
       // Execute with timeout
       const timeoutMs = step.timeoutMs ?? agent.timeoutMs ?? 60_000
-      const result = await withTimeout(agent.execute(input, context), timeoutMs)
+      const result = await withTimeout(agent.execute(guardedInput, context), timeoutMs)
+
+      // Run output guardrails (if configured)
+      if (agent.guardrails?.output && agent.guardrails.output.length > 0) {
+        await runGuardrails(
+          agent.guardrails.output,
+          result,
+          { phase: 'output', agentName: agent.name, executionId: plan.id, stepId: step.id },
+        )
+      }
 
       step.output = result
       step.status = 'complete'
