@@ -80,6 +80,8 @@ export type {
 export { createProvider } from './providers/index.js'
 export { createAnthropicProvider } from './providers/anthropic.js'
 export { createOpenAIProvider } from './providers/openai.js'
+export { createGeminiProvider } from './providers/gemini.js'
+export { createOllamaProvider } from './providers/ollama.js'
 export { withCircuitBreaker, withFailover, CircuitOpenError } from './providers/circuit-breaker.js'
 export type { CircuitBreakerConfig } from './providers/circuit-breaker.js'
 
@@ -175,6 +177,12 @@ export type { SwarmWireState } from './persistence/index.js'
 // Testing — Record/Replay
 export { RecordingProvider, ReplayProvider, ReplayMismatchError } from './testing/index.js'
 export type { Fixture, FixtureInteraction, ReplayOptions } from './testing/index.js'
+export { runEval, runEvalSuite, runEvalBatch, nonEmpty, lengthCheck, containsKeywords, schemaMatch, similarityToExpected, noRegression, noHallucination } from './testing/evals.js'
+export type { Eval, EvalSuite, EvalResult, SuiteResult, EvalContext } from './testing/evals.js'
+
+// Guardrails
+export { runGuardrails, GuardrailTripped, piiGuardrail, injectionGuardrail, hallucinationGuardrail, maxLengthGuardrail, contentFilter } from './core/guardrails.js'
+export type { Guardrail, GuardrailConfig, GuardrailContext, GuardrailResult, GuardrailRunResult } from './core/guardrails.js'
 
 // Dry-Run
 export { dryRun } from './executor/dry-run.js'
