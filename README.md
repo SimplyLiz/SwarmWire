@@ -1,8 +1,18 @@
 # SwarmWire
 
+[![npm version](https://img.shields.io/npm/v/swarmwire.svg)](https://www.npmjs.com/package/swarmwire)
+[![CI](https://github.com/SimplyLiz/SwarmWire/actions/workflows/ci.yml/badge.svg)](https://github.com/SimplyLiz/SwarmWire/actions/workflows/ci.yml)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5+-blue.svg)](https://www.typescriptlang.org/)
+[![Node](https://img.shields.io/badge/Node.js-20+-green.svg)](https://nodejs.org/)
+[![License](https://img.shields.io/badge/License-Community-orange.svg)](./LICENSE)
+
 **Multi-agent orchestration library for TypeScript.** Budget-first. Library, not framework.
 
 Coordinate LLM agents through typed, composable patterns — with hard cost limits, conflict resolution, and adaptive routing. Works standalone or with [ANCS](https://github.com/SimplyLiz/ancs) as its memory backend.
+
+```bash
+npm install swarmwire
+```
 
 ---
 
