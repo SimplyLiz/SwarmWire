@@ -1,6 +1,6 @@
 {
   "name": "swarmwire",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "TypeScript multi-agent orchestration library with budget-first design",
   "type": "module",
   "engines": {
@@ -76,7 +76,7 @@
   "license": "SEE LICENSE IN LICENSE",
   "repository": {
     "type": "git",
-    "url": "https://github.com/swarmwire/swarmwire"
+    "url": "https://github.com/SimplyLiz/SwarmWire"
   },
   "keywords": [
     "multi-agent",
