@@ -1,0 +1,5 @@
+export { Swarm } from './swarm.js'
+export type { SwarmConfig, SwarmRunOptions } from './swarm.js'
+export { createAgent } from './agent-factory.js'
+export { MessageBoard } from './messageboard.js'
+export type { Message, MessageType, MessageFilter, BoardStats, PostOptions } from './messageboard.js'

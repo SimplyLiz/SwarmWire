@@ -1,0 +1,102 @@
+SwarmWire Community License v1.0
+
+Copyright (c) 2026 SwarmWire Contributors. All rights reserved.
+
+TERMS AND CONDITIONS
+
+1. DEFINITIONS
+
+   "Software" means the SwarmWire source code, compiled binaries, documentation,
+   and any associated files distributed under this license.
+
+   "Commercial Use" means use of the Software in connection with any activity
+   intended for or directed toward commercial advantage or monetary compensation.
+
+   "Small Business" means any individual, sole proprietorship, or legal entity
+   with total annual gross revenue of less than twenty-five thousand euros
+   (EUR 25,000) in the most recent completed fiscal year.
+
+   "Open Source Project" means a software project whose complete source code is
+   made available under an OSI-approved open source license.
+
+2. OPEN SOURCE USE — FREE
+
+   Permission is hereby granted, free of charge, to any person or organization
+   using the Software as part of an Open Source Project, to use, copy, modify,
+   merge, publish, and distribute the Software, subject to the following
+   conditions:
+
+   a. The above copyright notice and this license shall be included in all
+      copies or substantial portions of the Software.
+
+   b. The Open Source Project in which the Software is used must itself be
+      distributed under an OSI-approved open source license.
+
+3. SMALL BUSINESS USE — FREE
+
+   Permission is hereby granted, free of charge, to any Small Business to use,
+   copy, modify, and deploy the Software for any purpose, including Commercial
+   Use, subject to the following conditions:
+
+   a. The above copyright notice and this license shall be included in all
+      copies or substantial portions of the Software.
+
+   b. If the Small Business's annual gross revenue exceeds EUR 25,000 in any
+      fiscal year, this free grant terminates at the end of that fiscal year.
+      Continued use requires a Commercial License.
+
+4. COMMERCIAL USE — PAID LICENSE REQUIRED
+
+   Any use of the Software for Commercial Use that does not qualify under
+   Section 2 (Open Source Use) or Section 3 (Small Business Use) requires a
+   separate commercial license agreement.
+
+   To obtain a commercial license, contact: license@swarmwire.dev
+
+   Use of the Software for Commercial Use without a valid commercial license
+   is a violation of this license and applicable copyright law.
+
+5. NON-COMMERCIAL / PERSONAL / EDUCATIONAL USE — FREE
+
+   Permission is hereby granted, free of charge, to any individual to use the
+   Software for personal, educational, research, or non-commercial purposes,
+   subject to inclusion of this license notice.
+
+6. CONTRIBUTIONS
+
+   By submitting a contribution (pull request, patch, or other modification)
+   to the Software, you grant the copyright holders a perpetual, worldwide,
+   non-exclusive, royalty-free license to use, reproduce, modify, and
+   distribute your contribution as part of the Software under the terms of
+   this license or any future version thereof.
+
+7. DISCLAIMER
+
+   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+   IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+   FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+   AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+   LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+   FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+   IN THE SOFTWARE.
+
+8. GOVERNING LAW
+
+   This license shall be governed by and construed in accordance with the laws
+   of the European Union and the member state in which the primary copyright
+   holder resides.
+
+---
+
+SUMMARY (not legally binding):
+
+  Free for:
+    - Open source projects (any revenue)
+    - Small businesses (under EUR 25,000/year)
+    - Personal, educational, and research use
+
+  Paid license required for:
+    - Companies and organizations with revenue >= EUR 25,000/year
+    - Any commercial use not covered above
+
+  Contact: license@swarmwire.dev
