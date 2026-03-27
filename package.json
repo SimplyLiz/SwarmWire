@@ -1,6 +1,6 @@
 {
   "name": "swarmwire",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "TypeScript multi-agent orchestration library with budget-first design",
   "type": "module",
   "engines": {
