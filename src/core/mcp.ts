@@ -1,6 +1,9 @@
 /**
  * MCP tool integration — load tools from MCP servers.
- * Uses stdio transport to communicate with MCP-compatible servers.
+ *
+ * Uses the official @modelcontextprotocol/sdk when available (proper protocol
+ * handling, capability negotiation, resource/prompt support).
+ * Falls back to a minimal hand-rolled JSON-RPC client if the SDK isn't installed.
  */
 
 import { spawn, type ChildProcess } from 'node:child_process'
@@ -13,47 +16,63 @@ export interface McpServerConfig {
   env?: Record<string, string>
 }
 
-interface JsonRpcRequest {
-  jsonrpc: '2.0'
-  id: number
-  method: string
-  params?: unknown
-}
-
-interface JsonRpcResponse {
-  jsonrpc: '2.0'
-  id: number
-  result?: unknown
-  error?: { code: number; message: string; data?: unknown }
-}
-
 /**
  * Connect to an MCP server and load its tools.
+ * Tries the official SDK first, falls back to raw JSON-RPC.
  */
 export async function loadMcpTools(config: McpServerConfig | string): Promise<Tool[]> {
-  const serverConfig = typeof config === 'string'
-    ? parseCommand(config)
-    : config
+  const serverConfig = typeof config === 'string' ? parseCommand(config) : config
 
-  const client = new McpStdioClient(serverConfig)
-
+  // Try official MCP SDK first
   try {
-    await client.initialize()
-    const toolDefs = await client.listTools()
-    return toolDefs.map((def) => createToolFromMcp(def, client))
-  } catch (err) {
-    client.close()
-    throw err
+    return await loadWithOfficialSdk(serverConfig)
+  } catch {
+    // SDK not installed or failed — fall back to raw client
+    return await loadWithRawClient(serverConfig)
   }
 }
 
 function parseCommand(cmd: string): McpServerConfig {
   const parts = cmd.split(/\s+/)
-  return {
-    command: parts[0]!,
-    args: parts.slice(1),
-  }
+  return { command: parts[0]!, args: parts.slice(1) }
 }
+
+// ─── Official SDK Path ───
+
+async function loadWithOfficialSdk(config: McpServerConfig): Promise<Tool[]> {
+  // Dynamic import — @modelcontextprotocol/sdk is an optional peer dep
+  // @ts-expect-error — optional peer dependency
+  const { Client } = await import('@modelcontextprotocol/sdk/client/index.js')
+  // @ts-expect-error — optional peer dependency
+  const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js')
+
+  const client = new Client({ name: 'swarmwire', version: '0.1.0' })
+  const transport = new StdioClientTransport({
+    command: config.command,
+    args: config.args ?? [],
+    cwd: config.cwd,
+    env: config.env ? { ...process.env, ...config.env } as Record<string, string> : undefined,
+  })
+
+  await client.connect(transport)
+
+  const { tools: toolDefs } = await client.listTools() as { tools: Array<{ name: string; description?: string; inputSchema?: unknown }> }
+
+  return toolDefs.map((def: { name: string; description?: string; inputSchema?: unknown }) => ({
+    name: def.name,
+    description: def.description ?? '',
+    inputSchema: (def.inputSchema ?? {}) as Record<string, unknown>,
+    async execute(input: unknown): Promise<unknown> {
+      const result = await client.callTool({ name: def.name, arguments: input as Record<string, unknown> })
+      const textParts = (result.content as Array<{ type: string; text?: string }>)
+        ?.filter((c) => c.type === 'text')
+        .map((c) => c.text ?? '') ?? []
+      return textParts.join('')
+    },
+  }))
+}
+
+// ─── Fallback: Raw JSON-RPC ───
 
 interface McpToolDef {
   name: string
@@ -61,7 +80,26 @@ interface McpToolDef {
   inputSchema: Record<string, unknown>
 }
 
-class McpStdioClient {
+async function loadWithRawClient(config: McpServerConfig): Promise<Tool[]> {
+  const client = new RawMcpClient(config)
+  try {
+    await client.initialize()
+    const toolDefs = await client.listTools()
+    return toolDefs.map((def) => ({
+      name: def.name,
+      description: def.description,
+      inputSchema: def.inputSchema,
+      async execute(input: unknown): Promise<unknown> {
+        return client.callTool(def.name, input)
+      },
+    }))
+  } catch (err) {
+    client.close()
+    throw err
+  }
+}
+
+class RawMcpClient {
   private process: ChildProcess | null = null
   private nextId = 1
   private pending = new Map<number, { resolve: (v: unknown) => void; reject: (e: Error) => void }>()
@@ -91,14 +129,12 @@ class McpStdioClient {
       this.pending.clear()
     })
 
-    // Send initialize
     await this.send('initialize', {
       protocolVersion: '2024-11-05',
       capabilities: {},
       clientInfo: { name: 'swarmwire', version: '0.1.0' },
     })
 
-    // Send initialized notification
     this.sendNotification('notifications/initialized')
   }
 
@@ -108,9 +144,10 @@ class McpStdioClient {
   }
 
   async callTool(name: string, args: unknown): Promise<unknown> {
-    const result = await this.send('tools/call', { name, arguments: args }) as { content?: Array<{ type: string; text?: string }> }
-    const textParts = result.content?.filter((c) => c.type === 'text').map((c) => c.text ?? '') ?? []
-    return textParts.join('')
+    const result = await this.send('tools/call', { name, arguments: args }) as {
+      content?: Array<{ type: string; text?: string }>
+    }
+    return result.content?.filter((c) => c.type === 'text').map((c) => c.text ?? '').join('') ?? ''
   }
 
   close(): void {
@@ -123,10 +160,9 @@ class McpStdioClient {
       const id = this.nextId++
       this.pending.set(id, { resolve, reject })
 
-      const msg: JsonRpcRequest = { jsonrpc: '2.0', id, method, params }
+      const msg = { jsonrpc: '2.0', id, method, params }
       this.process?.stdin?.write(JSON.stringify(msg) + '\n')
 
-      // Timeout
       setTimeout(() => {
         if (this.pending.has(id)) {
           this.pending.delete(id)
@@ -148,30 +184,16 @@ class McpStdioClient {
     for (const line of lines) {
       if (!line.trim()) continue
       try {
-        const msg = JSON.parse(line) as JsonRpcResponse
+        const msg = JSON.parse(line) as { id?: number; result?: unknown; error?: { message: string } }
         if (msg.id !== undefined && this.pending.has(msg.id)) {
           const p = this.pending.get(msg.id)!
           this.pending.delete(msg.id)
-          if (msg.error) {
-            p.reject(new Error(`MCP error: ${msg.error.message}`))
-          } else {
-            p.resolve(msg.result)
-          }
+          if (msg.error) p.reject(new Error(`MCP error: ${msg.error.message}`))
+          else p.resolve(msg.result)
         }
       } catch {
-        // Ignore unparseable lines (could be stderr leaking to stdout)
+        // Ignore unparseable lines
       }
     }
-  }
-}
-
-function createToolFromMcp(def: McpToolDef, client: McpStdioClient): Tool {
-  return {
-    name: def.name,
-    description: def.description,
-    inputSchema: def.inputSchema,
-    async execute(input: unknown): Promise<unknown> {
-      return client.callTool(def.name, input)
-    },
   }
 }

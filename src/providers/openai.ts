@@ -97,8 +97,11 @@ export function createOpenAIProvider(config: ProviderConfig): Provider {
         }
       }
 
-      const chatClient = client as { chat: { completions: { create: (p: unknown) => Promise<OpenAIResponse> } } }
-      const response = await chatClient.chat.completions.create(params)
+      // Use parse() for structured output (returns message.parsed), fall back to create()
+      const chatClient = client as { chat: { completions: { parse?: (p: unknown) => Promise<OpenAIResponse>; create: (p: unknown) => Promise<OpenAIResponse> } } }
+      const response = request.responseFormat && chatClient.chat.completions.parse
+        ? await chatClient.chat.completions.parse(params)
+        : await chatClient.chat.completions.create(params)
       const durationMs = performance.now() - start
 
       const choice = (response.choices as Array<{ message: { content: string; parsed?: unknown }; finish_reason: string }>)[0]
@@ -108,6 +111,7 @@ export function createOpenAIProvider(config: ProviderConfig): Provider {
       let parsed: unknown
       const content = choice?.message?.content ?? ''
       if (request.responseFormat) {
+        // parse() adds message.parsed; create() does not
         parsed = choice?.message?.parsed
         if (parsed === undefined && content) {
           try { parsed = JSON.parse(content) } catch { /* leave undefined */ }

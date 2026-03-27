@@ -91,29 +91,41 @@ export function createAnthropicProvider(config: ProviderConfig): Provider {
       }
       if (request.temperature !== undefined) params.temperature = request.temperature
 
-      // Structured output via forced tool_use
+      // Structured output — use modern output_config.format API (SDK >= 0.50)
+      // Falls back to tool_use trick for older SDK versions
       if (request.responseFormat) {
-        const toolName = request.responseFormat.name ?? 'response'
-        params.tools = [{
-          name: toolName,
-          description: 'Respond with structured output matching this schema',
-          input_schema: request.responseFormat.schema,
-        }]
-        params.tool_choice = { type: 'tool', name: toolName }
+        params.output_config = {
+          format: {
+            type: 'json_schema',
+            json_schema: request.responseFormat.schema,
+            name: request.responseFormat.name ?? 'response',
+          },
+        }
       }
 
-      const response = await (client as { messages: { create: (p: unknown) => Promise<AnthropicResponse> } }).messages.create(params)
+      // Try messages.parse() for structured output, fall back to messages.create()
+      const messagesApi = (client as { messages: { parse?: (p: unknown) => Promise<AnthropicResponse>; create: (p: unknown) => Promise<AnthropicResponse> } }).messages
+      const response = request.responseFormat && messagesApi.parse
+        ? await messagesApi.parse(params)
+        : await messagesApi.create(params)
       const durationMs = performance.now() - start
 
       const blocks = response.content as Array<{ type: string; text?: string; input?: unknown }>
       const textBlocks = blocks.filter((b) => b.type === 'text').map((b) => b.text ?? '').join('')
 
-      // Extract structured output from tool_use blocks
+      // Extract structured output
       let parsed: unknown
       if (request.responseFormat) {
-        const toolBlock = blocks.find((b) => b.type === 'tool_use')
-        if (toolBlock?.input) {
-          parsed = toolBlock.input
+        // Modern API: parsed_output from messages.parse()
+        parsed = (response as { parsed_output?: unknown }).parsed_output
+        // Fallback: tool_use block (old SDK versions)
+        if (parsed === undefined) {
+          const toolBlock = blocks.find((b) => b.type === 'tool_use')
+          if (toolBlock?.input) parsed = toolBlock.input
+        }
+        // Last resort: parse content as JSON
+        if (parsed === undefined && textBlocks) {
+          try { parsed = JSON.parse(textBlocks) } catch { /* leave undefined */ }
         }
       }
 
