@@ -91,22 +91,34 @@ export function createAnthropicProvider(config: ProviderConfig): Provider {
       }
       if (request.temperature !== undefined) params.temperature = request.temperature
 
-      // Structured output — use modern output_config.format API (SDK >= 0.50)
-      // Falls back to tool_use trick for older SDK versions
+      // Structured output — try modern API first, fall back to tool_use trick
+      const messagesApi = (client as { messages: { parse?: (p: unknown) => Promise<AnthropicResponse>; create: (p: unknown) => Promise<AnthropicResponse> } }).messages
+      const useModernApi = request.responseFormat && typeof messagesApi.parse === 'function'
+
       if (request.responseFormat) {
-        params.output_config = {
-          format: {
-            type: 'json_schema',
-            json_schema: request.responseFormat.schema,
-            name: request.responseFormat.name ?? 'response',
-          },
+        if (useModernApi) {
+          // Modern API (SDK >= 0.80): output_config.format + messages.parse()
+          params.output_config = {
+            format: {
+              type: 'json_schema',
+              json_schema: request.responseFormat.schema,
+              name: request.responseFormat.name ?? 'response',
+            },
+          }
+        } else {
+          // Legacy fallback: forced tool_use (works with any SDK version)
+          const toolName = request.responseFormat.name ?? 'response'
+          params.tools = [{
+            name: toolName,
+            description: 'Respond with structured output matching this schema',
+            input_schema: request.responseFormat.schema,
+          }]
+          params.tool_choice = { type: 'tool', name: toolName }
         }
       }
 
-      // Try messages.parse() for structured output, fall back to messages.create()
-      const messagesApi = (client as { messages: { parse?: (p: unknown) => Promise<AnthropicResponse>; create: (p: unknown) => Promise<AnthropicResponse> } }).messages
-      const response = request.responseFormat && messagesApi.parse
-        ? await messagesApi.parse(params)
+      const response = useModernApi
+        ? await messagesApi.parse!(params)
         : await messagesApi.create(params)
       const durationMs = performance.now() - start
 
