@@ -1,10 +1,24 @@
 {
   "name": "swarmwire",
-  "version": "1.0.2",
-  "description": "TypeScript multi-agent orchestration library with budget-first design",
+  "version": "1.0.3",
+  "description": "TypeScript multi-agent orchestration library with budget-first design. 7 patterns, 5-layer cost routing, record/replay testing, guardrails, evals, and plugin system.",
   "type": "module",
   "engines": {
     "node": ">=20"
+  },
+  "author": {
+    "name": "Lisa",
+    "email": "lisa@tastehub.io",
+    "url": "https://github.com/SimplyLiz"
+  },
+  "homepage": "https://github.com/SimplyLiz/SwarmWire#readme",
+  "bugs": {
+    "url": "https://github.com/SimplyLiz/SwarmWire/issues",
+    "email": "lisa@tastehub.io"
+  },
+  "funding": {
+    "type": "individual",
+    "url": "https://github.com/SimplyLiz/SwarmWire"
   },
   "exports": {
     ".": {
@@ -34,10 +48,12 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": false,
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "CHANGELOG.md"
   ],
   "scripts": {
     "dev": "tsx watch src/index.ts",
@@ -46,7 +62,8 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests",
-    "clean": "rm -rf dist"
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run build"
   },
   "dependencies": {
     "zod": "^3.23.8"
@@ -86,6 +103,24 @@
     "ai-agents",
     "typescript",
     "budget",
-    "coordination"
+    "coordination",
+    "ai",
+    "agent",
+    "routing",
+    "cascade",
+    "cost-optimization",
+    "guardrails",
+    "evals",
+    "record-replay",
+    "testing",
+    "mcp",
+    "a2a",
+    "openai",
+    "anthropic",
+    "claude",
+    "gemini",
+    "ollama",
+    "sse",
+    "plugin"
   ]
 }
