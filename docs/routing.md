@@ -794,3 +794,189 @@ Key variables that affect real-world savings:
 - **Query complexity distribution** -- more simple queries = more cheap-model wins
 - **Number of model tiers** -- more tiers = finer-grained routing
 - **Quality threshold** -- lower threshold = more cheap-model acceptance = more savings
+
+
+---
+
+## OpenTelemetry Export
+
+**Source:** `src/trace/otel.ts`
+
+Convert SwarmWire execution traces into OpenTelemetry spans for export to
+Jaeger, Datadog, Grafana Tempo, or any OTLP-compatible backend.
+
+### Span structure
+
+Each `ExecutionResult` produces:
+- **1 root span** (`swarmwire.execute`) covering the full execution
+- **N child spans** for each trace span (agent calls, LLM calls, tool calls, etc.)
+
+LLM call spans use `kind: 'client'`; everything else uses `kind: 'internal'`.
+
+### gen_ai semantic conventions
+
+LLM call spans include attributes from the emerging
+[gen_ai semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/):
+
+| Attribute                    | Description                          |
+|------------------------------|--------------------------------------|
+| `gen_ai.request.model`       | Model name (e.g., `claude-sonnet-4-20250514`) |
+| `gen_ai.system`              | Provider name (e.g., `anthropic`)    |
+| `gen_ai.usage.total_tokens`  | Total tokens used                    |
+| `gen_ai.cost_cents`          | Cost in cents                        |
+
+SwarmWire-specific attributes on all spans:
+
+| Attribute                    | Description                          |
+|------------------------------|--------------------------------------|
+| `swarmwire.plan.id`          | Plan ID                              |
+| `swarmwire.plan.mode`        | Execution mode                       |
+| `swarmwire.plan.steps`       | Number of steps                      |
+| `swarmwire.cost.total_cents` | Total execution cost                 |
+| `swarmwire.cost.budget_used` | Fraction of budget consumed          |
+| `swarmwire.tokens.total`     | Total tokens                         |
+| `swarmwire.tokens.input`     | Input tokens                         |
+| `swarmwire.tokens.output`    | Output tokens                        |
+| `swarmwire.confidence`       | Execution confidence score           |
+| `swarmwire.span.type`        | Span type (llm_call, tool_call, etc) |
+| `swarmwire.duration_ms`      | Span duration in milliseconds        |
+
+### toOTelSpans()
+
+Convert an `ExecutionResult` into an array of `OTelSpan` objects:
+
+```typescript
+import { toOTelSpans } from './trace/otel.js'
+
+const spans = toOTelSpans(executionResult, {
+  serviceName: 'my-swarm-app',
+  serviceVersion: '1.2.0',
+})
+
+// spans[0] = root span (swarmwire.execute)
+// spans[1..N] = child spans for each trace entry
+```
+
+### toOTLPJson()
+
+Format spans as an OTLP/HTTP JSON payload, ready to POST to any OTLP endpoint:
+
+```typescript
+import { toOTelSpans, toOTLPJson } from './trace/otel.js'
+
+const config = { serviceName: 'my-swarm-app', serviceVersion: '1.2.0' }
+const spans = toOTelSpans(result, config)
+const payload = toOTLPJson(spans, config)
+
+// payload shape:
+// {
+//   resourceSpans: [{
+//     resource: { attributes: [service.name, service.version, telemetry.sdk.*] },
+//     scopeSpans: [{
+//       scope: { name: 'swarmwire', version: '0.1.0' },
+//       spans: [...]
+//     }]
+//   }]
+// }
+```
+
+### Export to Jaeger
+
+```typescript
+import { toOTelSpans, toOTLPJson } from './trace/otel.js'
+
+const config = { serviceName: 'my-swarm-app' }
+const spans = toOTelSpans(result, config)
+const payload = toOTLPJson(spans, config)
+
+// Jaeger OTLP endpoint (default port 4318)
+await fetch('http://localhost:4318/v1/traces', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify(payload),
+})
+```
+
+### Export to Datadog
+
+```typescript
+// Datadog OTLP intake (via datadog-agent)
+await fetch('http://localhost:4318/v1/traces', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'DD-API-KEY': process.env.DD_API_KEY!,
+  },
+  body: JSON.stringify(payload),
+})
+```
+
+### Export to Grafana Tempo
+
+```typescript
+// Grafana Tempo OTLP endpoint
+await fetch('http://localhost:4318/v1/traces', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+    'Authorization': `Bearer ${process.env.GRAFANA_API_KEY}`,
+  },
+  body: JSON.stringify(payload),
+})
+```
+
+### Full integration example
+
+```typescript
+import { toOTelSpans, toOTLPJson } from './trace/otel.js'
+import type { OTelExportConfig } from './trace/otel.js'
+
+const otelConfig: OTelExportConfig = {
+  serviceName: 'code-review-swarm',
+  serviceVersion: '2.0.0',
+}
+
+async function runAndTrace(swarm: Swarm, task: string) {
+  const result = await swarm.execute(task)
+
+  // Convert to OTEL
+  const spans = toOTelSpans(result, otelConfig)
+  const payload = toOTLPJson(spans, otelConfig)
+
+  // Send to your OTLP backend
+  const endpoint = process.env.OTEL_EXPORTER_OTLP_ENDPOINT ?? 'http://localhost:4318'
+  await fetch(`${endpoint}/v1/traces`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  }).catch((err) => console.warn('OTEL export failed:', err.message))
+
+  return result
+}
+```
+
+### OTelSpan type reference
+
+```typescript
+interface OTelSpan {
+  traceId: string               // 32 hex chars
+  spanId: string                // 16 hex chars
+  parentSpanId?: string
+  name: string
+  kind: 'internal' | 'client'
+  startTimeUnixNano: number
+  endTimeUnixNano: number
+  attributes: OTelAttribute[]
+  status: { code: 'OK' | 'ERROR'; message?: string }
+}
+
+interface OTelAttribute {
+  key: string
+  value: { stringValue?: string; intValue?: number; doubleValue?: number; boolValue?: boolean }
+}
+
+interface OTelExportConfig {
+  serviceName: string
+  serviceVersion?: string       // defaults to '0.1.0'
+}
+```
