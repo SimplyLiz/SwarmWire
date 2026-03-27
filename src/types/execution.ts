@@ -21,6 +21,8 @@ export interface ExecutionResult<T = unknown> {
   partial: boolean
   /** All events emitted during execution (for post-execution replay) */
   events: import('../types/pattern.js').SwarmEvent[]
+  /** All inter-agent messages posted during execution */
+  messages: import('../core/messageboard.js').Message[]
 }
 
 export interface EvidenceRef {

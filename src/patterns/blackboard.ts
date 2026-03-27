@@ -77,6 +77,7 @@ export async function runBlackboard<T = unknown>(
   providers: Provider[],
   budget: Budget,
   emitEvent?: (event: SwarmEvent) => void,
+  msgBoard?: import('../core/messageboard.js').MessageBoard,
 ): Promise<ExecutionResult<T>> {
   const { agents, rounds = 5, convergence } = config
   if (agents.length === 0) throw new Error('blackboard requires at least one agent')
@@ -99,7 +100,7 @@ export async function runBlackboard<T = unknown>(
 
       try {
         const boardState = board.read()
-        const context = buildContext(task, agent, ledger, providers, traceSpans)
+        const context = buildContext(task, agent, ledger, providers, traceSpans, msgBoard)
 
         const prompt = round === 1
           ? `You are contributing to a collaborative analysis of: ${task.description}\n\nInput: ${JSON.stringify(task.input)}\n\nProvide your contribution as a JSON object.`
@@ -160,6 +161,7 @@ export async function runBlackboard<T = unknown>(
     agentOutputs: allOutputs,
     allResults: allOutputs,
     events: [],
+    messages: msgBoard ? msgBoard.export() : [],
     cost: costSummary,
     trace: { id: plan.id, startedAt, completedAt, spans: traceSpans },
     plan,
@@ -173,7 +175,9 @@ function buildContext(
   ledger: BudgetLedger,
   providers: Provider[],
   _traceSpans: TraceSpan[],
+  agentBoard?: import('../core/messageboard.js').MessageBoard,
 ) {
+  const boardView = agentBoard ? scopedBoard(agent.name, agentBoard) : stubBoard()
   return {
     executionId: task.id,
     budgetRemaining: ledger.remaining(),
@@ -210,8 +214,8 @@ function buildContext(
     async tool<T>(_name: string, _input: unknown): Promise<T> { throw new Error('Tools not supported in blackboard context') },
     trace(_event: string): void {},
     getStepOutput<T>(): T | undefined { return undefined },
-    board: stubBoard(),
+    board: boardView,
   }
 }
 
-import { stubBoard } from '../core/stub-board.js'
+import { stubBoard, scopedBoard } from '../core/stub-board.js'

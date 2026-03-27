@@ -35,6 +35,9 @@ export interface SwarmConfig {
   defaultModel?: ModelConfig
   mergeStrategy?: MergeStrategy
   conflictResolution?: ConflictStrategy
+  /** Shared MessageBoard for inter-agent communication. Persists across runs if injected.
+   *  Use CognitiveVaultBoard for CV persistence, FileBoard for local, or plain MessageBoard for ephemeral. */
+  board?: import('./messageboard.js').MessageBoard
 }
 
 export type SwarmRunOptions = {
@@ -62,6 +65,7 @@ export class Swarm {
   private readonly defaultBudget: Budget
   private readonly memory?: MemoryBackend
   private readonly defaultModel?: ModelConfig
+  private readonly board?: import('./messageboard.js').MessageBoard
   private readonly eventHandlers: Map<string, EventHandler[]> = new Map()
 
   constructor(config: SwarmConfig) {
@@ -69,6 +73,7 @@ export class Swarm {
     this.defaultBudget = config.budget ?? { maxCostCents: 100 }
     this.memory = config.memory
     this.defaultModel = config.defaultModel
+    this.board = config.board
 
     if (config.agents) {
       for (const agent of config.agents) {
@@ -113,7 +118,7 @@ export class Swarm {
     switch (pattern) {
       case 'pipeline': {
         const stages = options?.stages ?? agents.map((a) => ({ name: a.name, agent: a }))
-        return runPipeline<T>(task, { pattern: 'pipeline', stages }, this.providers, budget, emitEvent)
+        return runPipeline<T>(task, { pattern: 'pipeline', stages }, this.providers, budget, emitEvent, this.board)
       }
 
       case 'map-reduce': {
@@ -126,7 +131,7 @@ export class Swarm {
           worker: options.worker,
           reducer: options.reducer,
           maxParallel: options.maxParallel,
-        }, this.providers, budget, emitEvent)
+        }, this.providers, budget, emitEvent, this.board)
       }
 
       case 'orchestrator-worker':
@@ -136,7 +141,7 @@ export class Swarm {
           agents,
           mergeStrategy: options?.mergeStrategy,
           conflictResolution: options?.conflictResolution,
-        }, this.providers, budget, emitEvent)
+        }, this.providers, budget, emitEvent, this.board)
       }
     }
   }
@@ -169,6 +174,7 @@ export class Swarm {
       emitEvent: (event) => this.emit(event),
       defaultModel: this.defaultModel,
       onApproval: options?.onApproval,
+      board: this.board,
     })
   }
 

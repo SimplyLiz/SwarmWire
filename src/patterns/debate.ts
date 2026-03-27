@@ -21,6 +21,7 @@ export async function runDebate<T = unknown>(
   providers: Provider[],
   budget: Budget,
   emitEvent?: (event: SwarmEvent) => void,
+  board?: import('../core/messageboard.js').MessageBoard,
 ): Promise<ExecutionResult<T>> {
   const { proponents, judge, rounds = 3, convergenceThreshold = 0.85 } = config
   if (proponents.length < 2) throw new Error('debate requires at least 2 proponents')
@@ -47,7 +48,7 @@ export async function runDebate<T = unknown>(
       emitEvent?.({ type: 'step:start', stepId: `debate_r${round}_${proponent.name}`, agentName: proponent.name })
 
       try {
-        const context = buildAgentContext(task, proponent, ledger, providers, traceSpans)
+        const context = buildAgentContext(task, proponent, ledger, providers, traceSpans, board)
         const otherArgs = [...previousArguments.entries()]
           .filter(([name]) => name !== proponent.name)
           .map(([name, arg]) => `${name}: ${arg}`)
@@ -97,7 +98,7 @@ export async function runDebate<T = unknown>(
     emitEvent?.({ type: 'step:start', stepId: 'debate_judge', agentName: judge.name })
 
     try {
-      const context = buildAgentContext(task, judge, ledger, providers, traceSpans)
+      const context = buildAgentContext(task, judge, ledger, providers, traceSpans, board)
       const allArgs = [...previousArguments.entries()]
         .map(([name, arg]) => `### ${name}\n${arg}`)
         .join('\n\n---\n\n')
@@ -151,6 +152,7 @@ export async function runDebate<T = unknown>(
     agentOutputs: allOutputs,
     allResults: allOutputs,
     events: [],
+    messages: board ? board.export() : [],
     conflicts: detectConflicts(allOutputs.filter((o) => o.agentId !== judge.id)),
     cost: costSummary,
     trace: { id: plan.id, startedAt, completedAt, spans: traceSpans },
@@ -165,7 +167,9 @@ function buildAgentContext(
   ledger: BudgetLedger,
   providers: Provider[],
   traceSpans: TraceSpan[],
+  agentBoard?: import('../core/messageboard.js').MessageBoard,
 ) {
+  const boardView = agentBoard ? scopedBoard(agent.name, agentBoard) : stubBoard()
   return {
     executionId: task.id,
     budgetRemaining: ledger.remaining(),
@@ -202,8 +206,8 @@ function buildAgentContext(
     async tool<T>(_name: string, _input: unknown): Promise<T> { throw new Error('Tools not supported in debate context') },
     trace(_event: string): void {},
     getStepOutput<T>(): T | undefined { return undefined },
-    board: stubBoard(),
+    board: boardView,
   }
 }
 
-import { stubBoard } from '../core/stub-board.js'
+import { stubBoard, scopedBoard } from '../core/stub-board.js'

@@ -28,6 +28,7 @@ export async function runFanOut<T = unknown>(
   providers: Provider[],
   budget: Budget,
   emitEvent?: (event: SwarmEvent) => void,
+  board?: import('../core/messageboard.js').MessageBoard,
 ): Promise<ExecutionResult<T[]>> {
   const { agents, optional = true } = config
   if (agents.length === 0) throw new Error('fan-out requires at least one agent')
@@ -59,7 +60,7 @@ export async function runFanOut<T = unknown>(
   }
 
   const result = await executePlan<T[]>(plan, {
-    providers,
+    providers, board,
     budget: { ...budget, ...config.budget },
     emitEvent,
   })

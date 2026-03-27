@@ -47,6 +47,7 @@ export class EvolvingOrchestrator {
     config: EvolvingConfig,
     providers: Provider[],
     emitEvent?: (event: SwarmEvent) => void,
+    msgBoard?: import('../core/messageboard.js').MessageBoard,
   ): Promise<ExecutionResult<T>> {
     const { agents, maxRounds = 10, qualityThreshold = 0.85, explorationRate = 0.15 } = config
     const budget = config.budget ?? {}
@@ -74,7 +75,7 @@ export class EvolvingOrchestrator {
       const spanStart = performance.now()
 
       try {
-        const context = this.buildContext(task, agent, round, lastOutput, ledger, providers, traceSpans)
+        const context = this.buildContext(task, agent, round, lastOutput, ledger, providers, traceSpans, msgBoard)
         const result = await agent.execute(
           round === 0 ? task.input : { previousResult: lastOutput, originalTask: task.input, round },
           context,
@@ -129,6 +130,7 @@ export class EvolvingOrchestrator {
       agentOutputs: allOutputs,
       allResults: allOutputs,
       events: [],
+      messages: msgBoard ? msgBoard.export() : [],
       cost: costSummary,
       trace: { id: plan.id, startedAt, completedAt, spans: traceSpans },
       plan,
@@ -199,7 +201,9 @@ export class EvolvingOrchestrator {
   private buildContext(
     task: Task, agent: Agent, round: number, previousOutput: unknown,
     ledger: BudgetLedger, providers: Provider[], traceSpans: TraceSpan[],
+    agentBoard?: import('../core/messageboard.js').MessageBoard,
   ) {
+    const boardView = agentBoard ? scopedBoard(agent.name, agentBoard) : stubBoard()
     return {
       executionId: task.id,
       budgetRemaining: ledger.remaining(),
@@ -226,12 +230,12 @@ export class EvolvingOrchestrator {
       async tool<T>(_n: string, _i: unknown): Promise<T> { throw new Error('Not supported') },
       trace(_e: string): void {},
       getStepOutput<T>(): T | undefined { return previousOutput as T },
-      board: stubBoard(),
+      board: boardView,
     }
   }
 }
 
-import { stubBoard } from '../core/stub-board.js'
+import { stubBoard, scopedBoard } from '../core/stub-board.js'
 
 function shuffle<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {

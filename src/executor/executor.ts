@@ -12,6 +12,7 @@ import type { AgentBoard } from '../types/agent.js'
 import { isAgentRef } from '../types/plan.js'
 import { BudgetLedger } from '../budget/ledger.js'
 import { MessageBoard } from '../core/messageboard.js'
+import { scopedBoard } from '../core/stub-board.js'
 import { runGuardrails, GuardrailTripped } from '../core/guardrails.js'
 
 export interface ExecutorConfig {
@@ -21,6 +22,8 @@ export interface ExecutorConfig {
   defaultModel?: ModelConfig
   /** Callback for approval gates. If not provided, gates auto-approve. */
   onApproval?: import('../types/plan.js').ApprovalCallback
+  /** Shared MessageBoard for inter-agent communication. If not provided, a fresh one is created. */
+  board?: MessageBoard
 }
 
 export async function executePlan<T = unknown>(
@@ -37,7 +40,7 @@ export async function executePlan<T = unknown>(
   const agentOutputs: AgentOutput[] = []
   const allResults: AgentOutput[] = []
   const stepResults = new Map<string, unknown>()
-  const board = new MessageBoard()
+  const board = config.board ?? new MessageBoard()
   const startedAt = performance.now()
 
   plan.status = 'running'
@@ -296,6 +299,7 @@ export async function executePlan<T = unknown>(
     plan,
     partial,
     events: collectedEvents,
+    messages: board.export(),
   }
 }
 
@@ -326,35 +330,7 @@ function createAgentContext(
   board: MessageBoard,
   emitEvent?: (event: SwarmEvent) => void,
 ): AgentContext {
-  // Create agent-scoped board view
-  const agentBoard: AgentBoard = {
-    post(to, content, opts) {
-      board.post(agent.name, to, content, opts)
-    },
-    read(filter) {
-      return board.read(agent.name, filter as Parameters<typeof board.read>[1]).map((m) => ({
-        id: m.id, from: m.from, content: m.content, type: m.type, data: m.data, timestamp: m.timestamp,
-      }))
-    },
-    inbox() {
-      return board.inbox(agent.name).map((m) => ({
-        id: m.id, from: m.from, content: m.content, type: m.type, data: m.data, timestamp: m.timestamp,
-      }))
-    },
-    findings() {
-      return board.allFindings().filter((m) => m.from !== agent.name).map((m) => ({
-        from: m.from, content: m.content, data: m.data,
-      }))
-    },
-    warnings() {
-      return board.allWarnings().filter((m) => m.from !== agent.name).map((m) => ({
-        from: m.from, content: m.content, data: m.data,
-      }))
-    },
-    reply(questionId, content, data) {
-      board.post(agent.name, '*', content, { type: 'answer', data: { replyTo: questionId, ...((data && typeof data === 'object') ? data : { value: data }) } })
-    },
-  }
+  const agentBoard = scopedBoard(agent.name, board)
 
   return {
     executionId,

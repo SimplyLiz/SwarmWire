@@ -18,6 +18,7 @@ export async function runPipeline<T = unknown>(
   providers: Provider[],
   budget: Budget,
   emitEvent?: (event: SwarmEvent) => void,
+  board?: import('../core/messageboard.js').MessageBoard,
 ): Promise<ExecutionResult<T>> {
   const stages = config.stages
   if (stages.length === 0) throw new Error('pipeline requires at least one stage')
@@ -34,5 +35,5 @@ export async function runPipeline<T = unknown>(
     }
   }
 
-  return executePlan<T>(plan, { providers, budget, emitEvent })
+  return executePlan<T>(plan, { providers, budget, emitEvent, board })
 }

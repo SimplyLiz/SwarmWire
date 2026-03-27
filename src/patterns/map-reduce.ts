@@ -21,6 +21,7 @@ export async function runMapReduce<T = unknown, TInput = unknown>(
   providers: Provider[],
   budget: Budget,
   emitEvent?: (event: SwarmEvent) => void,
+  board?: import('../core/messageboard.js').MessageBoard,
 ): Promise<ExecutionResult<T>> {
   const chunks = config.mapper(task.input)
   const maxParallel = config.maxParallel ?? chunks.length
@@ -61,7 +62,7 @@ export async function runMapReduce<T = unknown, TInput = unknown>(
   }
 
   return executePlan<T>(plan, {
-    providers,
+    providers, board,
     budget: { ...budget, maxAgents: maxParallel },
     emitEvent,
   })

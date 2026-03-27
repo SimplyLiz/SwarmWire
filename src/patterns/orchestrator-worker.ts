@@ -20,11 +20,12 @@ export async function runOrchestratorWorker<T = unknown>(
   providers: Provider[],
   budget: Budget,
   emitEvent?: (event: import('../types/pattern.js').SwarmEvent) => void,
+  board?: import('../core/messageboard.js').MessageBoard,
 ): Promise<ExecutionResult<T>> {
   const agents = config.agents
   if (agents.length === 0) throw new Error('orchestrator-worker requires at least one agent')
 
   const plan = buildPlan(task, { agents, pattern: config })
 
-  return executePlan<T>(plan, { providers, budget, emitEvent })
+  return executePlan<T>(plan, { providers, budget, emitEvent, board })
 }
