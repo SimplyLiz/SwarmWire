@@ -2,7 +2,7 @@
 
 **Multi-agent orchestration library for TypeScript.** Budget-first. Library, not framework.
 
-Coordinate LLM agents through typed, composable patterns — with hard cost limits, conflict resolution, and adaptive routing. Works standalone or with [ANCS](https://github.com/swarmwire/ancs) as its memory backend.
+Coordinate LLM agents through typed, composable patterns — with hard cost limits, conflict resolution, and adaptive routing. Works standalone or with [ANCS](https://github.com/SimplyLiz/ancs) as its memory backend.
 
 ---
 
@@ -125,6 +125,19 @@ await runBlackboard(task, {
   rounds: 5,
   convergence: (state) => state.merged.qualityScore > 0.9,
 }, providers, budget)
+```
+
+### Fan-Out
+Same input, N agents, all parallel. Promise.allSettled for agents.
+```typescript
+import { runFanOut } from 'swarmwire'
+
+const result = await runFanOut(task, {
+  agents: [reviewer1, reviewer2, reviewer3],
+  input: codeToReview,
+  optional: true,  // individual failures don't kill the batch
+}, providers, budget)
+// result.output = [output1, output2, output3]
 ```
 
 ### Evolving Orchestration
@@ -356,6 +369,33 @@ console.log(summarizeExecution(result))
 
 console.log(explainExecution(result))
 // Full report: steps, cost breakdown, trace, conflicts
+```
+
+### SSE Streaming (Web)
+
+Pipe agent execution to HTTP clients via Server-Sent Events. Works with Express, Fastify, Next.js, or native http. See [docs/sse-streaming.md](./docs/sse-streaming.md) for full recipes.
+
+```typescript
+import { sseHeaders, pipeToSSE } from 'swarmwire/transport'
+
+app.get('/api/run', async (req, res) => {
+  sseHeaders(res)
+  const result = await pipeToSSE(swarm.stream('Analyze codebase'), res)
+  res.end()
+})
+```
+
+```javascript
+// Client
+const source = new EventSource('/api/run')
+source.addEventListener('step:complete', (e) => {
+  const { agentName, costCents } = JSON.parse(e.data)
+  console.log(`${agentName} done: ${costCents}c`)
+})
+source.addEventListener('result', (e) => {
+  console.log('Output:', JSON.parse(e.data).output)
+  source.close()
+})
 ```
 
 ---
@@ -709,6 +749,35 @@ const agent = swarm.agent({
 
 ---
 
+## Plugin System
+
+Extend SwarmWire with third-party providers, agents, guardrails, evals, tools, and middleware. See [docs/plugins.md](./docs/plugins.md) for full guide.
+
+```typescript
+import { Swarm, definePlugin, piiGuardrail, noHallucination } from 'swarmwire'
+
+const securityPlugin = definePlugin({
+  name: '@myco/security',
+  version: '1.0.0',
+  guardrails: {
+    input: [piiGuardrail()],
+    output: [contentFilter(['internal-only'], 'block')],
+  },
+  evals: [noHallucination()],
+  middleware: {
+    async beforeExecute(agentName, input) {
+      console.log(`[audit] ${agentName} starting`)
+      return input
+    },
+  },
+})
+
+const swarm = new Swarm({ providers })
+await swarm.use(securityPlugin)
+```
+
+---
+
 ## Architecture
 
 ```
@@ -742,7 +811,22 @@ User Code
 
 ## Project Stats
 
-81 modules | 29 test files | 265 tests | 7 agent templates
+86 modules | 34 test files | 299 tests | 7 agent templates | 8 docs
+
+---
+
+## Documentation
+
+| Guide | What it covers |
+|-------|---------------|
+| [Routing Stack](./docs/routing.md) | 5-layer cost optimization, cascade routing, semantic cache, OTEL export |
+| [Eval Workflow](./docs/eval-workflow.md) | Record → Replay → Eval → CI pipeline |
+| [SSE Streaming](./docs/sse-streaming.md) | Express, Fastify, Next.js, React recipes |
+| [Conflict Resolution](./docs/conflict-resolution.md) | Detection algorithms, resolution strategies |
+| [Persistence](./docs/persistence.md) | Checkpoint/resume, differential execution, state management |
+| [Adapters](./docs/adapters.md) | Claude Agent SDK, FileBoard, CognitiveVault |
+| [Plugins](./docs/plugins.md) | Plugin interface, middleware, publishing |
+| [CognitiveVault](./docs/cognitive-vault-integration.md) | CV-backed inter-agent messaging |
 
 ---
 
