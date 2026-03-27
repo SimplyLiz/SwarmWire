@@ -2,9 +2,10 @@
 // https://github.com/swarmwire/swarmwire
 
 // Core
-export { Swarm, createAgent, MessageBoard } from './core/index.js'
+export { Swarm, createAgent, MessageBoard, PluginRegistry, definePlugin } from './core/index.js'
 export type { SwarmConfig, SwarmRunOptions } from './core/index.js'
 export type { Message, MessageType, MessageFilter, BoardStats, PostOptions } from './core/messageboard.js'
+export type { SwarmWirePlugin, PluginContext, PluginMiddleware } from './core/plugins.js'
 
 // Types
 export type {

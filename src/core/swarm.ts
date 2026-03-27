@@ -26,6 +26,8 @@ import { executePlan } from '../executor/executor.js'
 import { runOrchestratorWorker } from '../patterns/orchestrator-worker.js'
 import { runPipeline } from '../patterns/pipeline.js'
 import { runMapReduce } from '../patterns/map-reduce.js'
+import { PluginRegistry } from './plugins.js'
+import type { SwarmWirePlugin } from './plugins.js'
 
 export interface SwarmConfig {
   providers: Provider[]
@@ -67,6 +69,7 @@ export class Swarm {
   private readonly defaultModel?: ModelConfig
   private readonly board?: import('./messageboard.js').MessageBoard
   private readonly eventHandlers: Map<string, EventHandler[]> = new Map()
+  private readonly plugins = new PluginRegistry()
 
   constructor(config: SwarmConfig) {
     this.providers = config.providers
@@ -74,7 +77,6 @@ export class Swarm {
     this.memory = config.memory
     this.defaultModel = config.defaultModel
     this.board = config.board
-
     if (config.agents) {
       for (const agent of config.agents) {
         this.registeredAgents.set(agent.name, agent)
@@ -94,6 +96,26 @@ export class Swarm {
   /** Register an existing agent. */
   register(agent: Agent): void {
     this.registeredAgents.set(agent.name, agent)
+  }
+
+  /** Register a plugin. Plugins can add providers, agents, guardrails, evals, tools, and middleware. */
+  async use(plugin: SwarmWirePlugin): Promise<void> {
+    await this.plugins.use(plugin)
+
+    // Merge plugin registrations into the swarm
+    for (const provider of this.plugins.getProviders()) {
+      if (!this.providers.find((p) => p.name === provider.name)) {
+        this.providers.push(provider)
+      }
+    }
+    for (const agent of this.plugins.getAgents()) {
+      this.registeredAgents.set(agent.name, agent)
+    }
+  }
+
+  /** List registered plugins. */
+  listPlugins(): Array<{ name: string; version: string; description?: string }> {
+    return this.plugins.list()
   }
 
   /** Subscribe to events. */
