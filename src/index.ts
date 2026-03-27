@@ -207,3 +207,7 @@ export type { FallbackModel, ModelCascadeConfig, ModelCascadeResult } from './pr
 
 // Plan types (approval gates)
 export type { ApprovalGate, ApprovalCallback } from './types/plan.js'
+
+// SSE Transport
+export { sseHeaders, sseEvent, pipeToSSE } from './transport/index.js'
+export type { PipeOptions } from './transport/index.js'

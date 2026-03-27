@@ -19,6 +19,14 @@
       "import": "./dist/patterns/index.js",
       "types": "./dist/patterns/index.d.ts"
     },
+    "./transport": {
+      "import": "./dist/transport/index.js",
+      "types": "./dist/transport/index.d.ts"
+    },
+    "./testing": {
+      "import": "./dist/testing/index.js",
+      "types": "./dist/testing/index.d.ts"
+    },
     "./memory/*": {
       "import": "./dist/memory/*.js",
       "types": "./dist/memory/*.d.ts"
