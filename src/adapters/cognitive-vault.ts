@@ -94,14 +94,23 @@ export class CognitiveVaultBoard extends MessageBoard {
    */
   async hydrate(sessionId?: string): Promise<number> {
     const sid = sessionId ?? this.config.sessionId
-    const url = new URL(`${this.config.apiUrl}/api/v1/vaults/${this.config.vaultId}/entries`)
-    url.searchParams.set('tags', `session:${sid}`)
-    url.searchParams.set('pageSize', '100')
-    url.searchParams.set('chunkLevel', 'all')
 
-    const res = await fetch(url.toString(), {
-      headers: this.headers(),
-    })
+    let res: Response
+    try {
+      const url = new URL(`${this.config.apiUrl}/api/v1/vaults/${this.config.vaultId}/entries`)
+      url.searchParams.set('tags', `session:${sid}`)
+      url.searchParams.set('pageSize', '100')
+      url.searchParams.set('chunkLevel', 'all')
+
+      res = await fetch(url.toString(), {
+        headers: this.headers(),
+        signal: AbortSignal.timeout(5000),
+      })
+    } catch (err) {
+      console.warn('[cv-board] CV unreachable — falling back to file:', (err as Error).message)
+      this.cvAvailable = false
+      return this.fallback ? this.fallback.hydrate(sid) : 0
+    }
 
     if (!res.ok) {
       console.warn('[cv-board] CV hydrate failed:', res.status, '— trying file fallback')
@@ -137,15 +146,26 @@ export class CognitiveVaultBoard extends MessageBoard {
   }
 
   /**
-   * Wait for all pending persists to complete.
+   * Wait for all pending persists to complete (both CV and file fallback).
    */
   async flush(): Promise<void> {
     await this.persistQueue
+    if (this.fallback) await this.fallback.flush()
   }
 
   /** Get the session ID being used */
   get sessionId(): string {
     return this.config.sessionId
+  }
+
+  /** Whether CV is reachable (null = not checked yet) */
+  get isCvAvailable(): boolean | null {
+    return this.cvAvailable
+  }
+
+  /** Whether messages are falling back to local file */
+  get isUsingFallback(): boolean {
+    return this.cvAvailable === false && !!this.fallback
   }
 
   // --- Private ---
