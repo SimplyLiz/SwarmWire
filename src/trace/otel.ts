@@ -3,7 +3,7 @@
  * Follows emerging gen_ai semantic conventions.
  */
 
-import type { ExecutionResult, ExecutionTrace, TraceSpan } from '../types/execution.js'
+import type { ExecutionResult } from '../types/execution.js'
 
 /** OTEL-compatible span (simplified — can be fed to any OTEL exporter) */
 export interface OTelSpan {

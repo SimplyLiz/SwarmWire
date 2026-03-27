@@ -5,7 +5,7 @@
 
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http'
 import type { Agent } from '../types/agent.js'
-import { toAgentCard, type AgentCard } from './agent-card.js'
+import { toAgentCard } from './agent-card.js'
 
 export interface A2AServerConfig {
   port: number

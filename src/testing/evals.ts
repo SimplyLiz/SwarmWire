@@ -185,7 +185,7 @@ export function schemaMatch(requiredKeys: string[]): Eval<unknown, unknown> {
 }
 
 /** Compares output to expected (ground truth) using string similarity */
-export function similarityToExpected(threshold = 0.7): Eval {
+export function similarityToExpected(_threshold = 0.7): Eval {
   return {
     name: 'similarity-to-expected',
     score(_input, output, context) {

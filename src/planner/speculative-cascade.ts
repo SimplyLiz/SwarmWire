@@ -12,7 +12,7 @@
  */
 
 import type { Provider, LlmRequest, LlmResponse, ProviderModelInfo } from '../types/provider.js'
-import type { ModelLadder, ModelRung, CascadeTrace, QualityEstimatorFn } from './cascade-router.js'
+import type { ModelLadder, CascadeTrace, QualityEstimatorFn } from './cascade-router.js'
 
 export interface SpeculativeCascadeConfig {
   /** The model ladder (cheapest → most expensive) */

@@ -4,7 +4,7 @@
  */
 
 import type { Agent, AgentContext, LlmCallOptions } from '../types/agent.js'
-import type { Budget, CostEvent } from '../types/budget.js'
+import type { CostEvent } from '../types/budget.js'
 import type { TraceSpan } from '../types/execution.js'
 import type { Provider, LlmRequest, ModelConfig } from '../types/provider.js'
 import type { BudgetLedger } from '../budget/ledger.js'

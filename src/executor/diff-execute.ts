@@ -3,7 +3,7 @@
  * Turns expensive full re-runs into cheap incremental updates.
  */
 
-import type { Plan, Step } from '../types/plan.js'
+import type { Plan } from '../types/plan.js'
 import type { ExecutionResult } from '../types/execution.js'
 import { createHash } from 'node:crypto'
 

@@ -6,14 +6,13 @@
 
 import type { Agent, AgentOutput } from '../types/agent.js'
 import type { Task } from '../types/task.js'
-import type { ExecutionResult, ExecutionTrace, TraceSpan } from '../types/execution.js'
+import type { ExecutionResult, TraceSpan } from '../types/execution.js'
 import type { DebateConfig, SwarmEvent } from '../types/pattern.js'
 import type { Provider } from '../types/provider.js'
-import type { Budget, CostEvent } from '../types/budget.js'
+import type { Budget } from '../types/budget.js'
 import type { Plan } from '../types/plan.js'
 import { BudgetLedger } from '../budget/ledger.js'
 import { detectConflicts } from '../conflict/detector.js'
-import { resolveConflict } from '../conflict/resolver.js'
 
 export async function runDebate<T = unknown>(
   task: Task,
@@ -31,7 +30,7 @@ export async function runDebate<T = unknown>(
   const allOutputs: AgentOutput[] = []
   const startedAt = performance.now()
 
-  let previousArguments: Map<string, string> = new Map()
+  const previousArguments: Map<string, string> = new Map()
   let finalRound = rounds
 
   // Debate rounds

@@ -4,8 +4,7 @@
  */
 
 import type { Agent } from '../types/agent.js'
-import type { ModelTier, Provider } from '../types/provider.js'
-import type { CostSummary } from '../types/budget.js'
+import type { ModelTier } from '../types/provider.js'
 import type { TaskScore } from '../types/task.js'
 
 export interface ExecutionRecord {

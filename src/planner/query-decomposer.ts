@@ -11,7 +11,7 @@
  * 4. Merge results
  */
 
-import type { Provider, LlmRequest, LlmResponse, ProviderModelInfo, ModelTier } from '../types/provider.js'
+import type { LlmResponse, ModelTier } from '../types/provider.js'
 import type { ModelLadder, ModelRung } from './cascade-router.js'
 
 export interface DecomposedQuery {
@@ -52,7 +52,7 @@ export function decomposeQuery(text: string): DecomposedQuery {
   let counter = 0
 
   // Split on clear task boundaries
-  const patterns = [
+  const _patterns = [
     // Numbered lists: "1. do X  2. do Y"
     /(?:^|\n)\s*\d+[.)]\s+/g,
     // Bullet points

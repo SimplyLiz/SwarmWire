@@ -3,14 +3,12 @@
  * Split input into chunks, process in parallel, reduce results.
  */
 
-import type { Agent, AgentContext } from '../types/agent.js'
 import type { Task } from '../types/task.js'
 import type { ExecutionResult } from '../types/execution.js'
 import type { MapReduceConfig, SwarmEvent } from '../types/pattern.js'
 import type { Provider } from '../types/provider.js'
 import type { Budget } from '../types/budget.js'
 import type { Step } from '../types/plan.js'
-import { buildPlan } from '../planner/planner.js'
 import { executePlan } from '../executor/executor.js'
 
 let stepCounter = 1000
@@ -27,7 +25,7 @@ export async function runMapReduce<T = unknown, TInput = unknown>(
   const maxParallel = config.maxParallel ?? chunks.length
 
   // Build a plan with one step per chunk + a final reduce step
-  const mapSteps: Step[] = chunks.map((chunk, i) => ({
+  const mapSteps: Step[] = chunks.map((chunk, _i) => ({
     id: `map_${++stepCounter}`,
     agent: config.worker,
     input: { type: 'literal' as const, value: chunk },

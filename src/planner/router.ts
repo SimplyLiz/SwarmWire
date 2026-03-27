@@ -5,7 +5,7 @@
 
 import type { Agent } from '../types/agent.js'
 import type { ModelTier, Provider, ProviderModelInfo } from '../types/provider.js'
-import type { ModelPreference, Budget } from '../types/budget.js'
+import type { Budget } from '../types/budget.js'
 import type { TaskScore } from '../types/task.js'
 
 export interface RouteResult {

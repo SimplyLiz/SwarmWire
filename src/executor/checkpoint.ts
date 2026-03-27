@@ -3,7 +3,7 @@
  * Enables resume after failure or interruption.
  */
 
-import type { Plan, Step, StepStatus } from '../types/plan.js'
+import type { Plan, StepStatus } from '../types/plan.js'
 import type { CostEvent } from '../types/budget.js'
 
 export interface Checkpoint {

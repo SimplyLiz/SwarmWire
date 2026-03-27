@@ -50,7 +50,7 @@ export class EvolvingOrchestrator {
     emitEvent?: (event: SwarmEvent) => void,
     msgBoard?: import('../core/messageboard.js').MessageBoard,
   ): Promise<ExecutionResult<T>> {
-    const { agents, maxRounds = 10, qualityThreshold = 0.85, explorationRate = 0.15 } = config
+    const { agents, maxRounds = 10, qualityThreshold: _qualityThreshold = 0.85, explorationRate = 0.15 } = config
     const budget = config.budget ?? {}
     const ledger = new BudgetLedger(budget, emitEvent)
     const traceSpans: TraceSpan[] = []
@@ -61,11 +61,11 @@ export class EvolvingOrchestrator {
     const agentOrder = this.selectAgentOrder(taskProfile, agents, explorationRate)
 
     let lastOutput: unknown = null
-    let roundsUsed = 0
+    let _roundsUsed = 0
 
     for (let round = 0; round < maxRounds; round++) {
       if (ledger.usage().exhausted) break
-      roundsUsed = round + 1
+      _roundsUsed = round + 1
 
       // Pick next agent from the evolved sequence (cycle if needed)
       const agentIdx = round % agentOrder.length

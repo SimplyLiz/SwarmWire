@@ -3,7 +3,7 @@
  * Uses the OpenAI-compatible API endpoint that Gemini exposes.
  */
 
-import type { Provider, ProviderConfig, ProviderModelInfo, LlmRequest, LlmResponse, ModelTier } from '../types/provider.js'
+import type { Provider, ProviderConfig, ProviderModelInfo, ModelTier } from '../types/provider.js'
 import { createOpenAIProvider } from './openai.js'
 
 const GEMINI_MODELS: ProviderModelInfo[] = [

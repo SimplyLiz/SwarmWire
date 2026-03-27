@@ -3,7 +3,7 @@
  * Uses Ollama's OpenAI-compatible API.
  */
 
-import type { Provider, ProviderConfig, ProviderModelInfo, LlmRequest, LlmResponse, ModelTier } from '../types/provider.js'
+import type { Provider, ProviderConfig, ProviderModelInfo, ModelTier } from '../types/provider.js'
 import { createOpenAIProvider } from './openai.js'
 
 const OLLAMA_DEFAULTS: ProviderModelInfo[] = [

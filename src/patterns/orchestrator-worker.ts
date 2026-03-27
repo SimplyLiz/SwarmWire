@@ -4,11 +4,9 @@
  * ~70% of production MAS deployments use this.
  */
 
-import type { Agent } from '../types/agent.js'
 import type { Task } from '../types/task.js'
 import type { ExecutionResult } from '../types/execution.js'
-import type { OrchestratorWorkerConfig, PatternRuntime, MergeStrategy } from '../types/pattern.js'
-import type { Plan } from '../types/plan.js'
+import type { OrchestratorWorkerConfig } from '../types/pattern.js'
 import { buildPlan } from '../planner/planner.js'
 import { executePlan } from '../executor/executor.js'
 import type { Provider } from '../types/provider.js'

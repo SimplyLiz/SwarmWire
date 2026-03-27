@@ -3,7 +3,7 @@
  */
 
 import type { ExecutionResult } from '../types/execution.js'
-import type { Plan, Step } from '../types/plan.js'
+import type { Plan } from '../types/plan.js'
 
 /**
  * Generate a human-readable explanation of a plan execution.

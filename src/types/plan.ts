@@ -4,7 +4,7 @@
  */
 
 import type { Agent } from './agent.js'
-import type { Budget, BudgetEstimate, CostEvent } from './budget.js'
+import type { BudgetEstimate, CostEvent } from './budget.js'
 import type { Task } from './task.js'
 
 export type PlanStatus = 'draft' | 'approved' | 'running' | 'complete' | 'failed'

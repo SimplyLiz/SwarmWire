@@ -9,7 +9,7 @@
  * over quality, cost, AND latency jointly.
  */
 
-import type { Provider, ProviderModelInfo, ModelTier } from '../types/provider.js'
+import type { ModelTier } from '../types/provider.js'
 import type { ModelLadder, ModelRung } from './cascade-router.js'
 
 export interface LatencyRouterConfig {

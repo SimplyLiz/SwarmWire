@@ -10,11 +10,7 @@ import type { Plan } from '../types/plan.js'
 import type { Provider, ModelConfig } from '../types/provider.js'
 import type { Task } from '../types/task.js'
 import type {
-  PatternConfig,
   PatternName,
-  OrchestratorWorkerConfig,
-  PipelineConfig,
-  MapReduceConfig,
   SwarmEvent,
   MergeStrategy,
   ConflictStrategy,
@@ -224,8 +220,6 @@ export class Swarm {
       return result
     })
 
-    let result: ExecutionResult<T> | undefined
-
     while (!done) {
       if (events.length > 0) {
         yield events.shift()!
@@ -239,7 +233,7 @@ export class Swarm {
       yield events.shift()!
     }
 
-    result = await resultPromise
+    const result = await resultPromise
     return result
   }
 

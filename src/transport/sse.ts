@@ -98,7 +98,7 @@ export interface PipeOptions {
   includeTrace?: boolean
 }
 
-function formatEvent(event: SwarmEvent, includeTrace: boolean): Record<string, unknown> {
+function formatEvent(event: SwarmEvent, _includeTrace: boolean): Record<string, unknown> {
   switch (event.type) {
     case 'step:start':
       return { stepId: event.stepId, agentName: event.agentName }

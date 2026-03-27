@@ -41,7 +41,7 @@ export function scoreTask(task: Task): TaskScore {
 
 function computeFactors(text: string): TaskFactors {
   const wordCount = text.split(/\s+/).length
-  const sentenceCount = text.split(/[.!?]+/).filter(Boolean).length
+  const _sentenceCount = text.split(/[.!?]+/).filter(Boolean).length
 
   // Input complexity — longer, more structured = more complex
   const inputComplexity = Math.min(1, wordCount / 200)

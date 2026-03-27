@@ -4,7 +4,6 @@
  */
 
 import type { Agent, AgentContext } from '../types/agent.js'
-import type { Tool } from '../types/tool.js'
 
 export interface ClaudeAgentConfig {
   /** Agent name in SwarmWire */
@@ -39,7 +38,7 @@ export async function fromClaudeAgentSDK(config: ClaudeAgentConfig): Promise<Age
     )
   }
 
-  let idCounter = 0
+  const _idCounter = 0
 
   const agent: Agent = {
     id: `claude_sdk_${config.name}_${Date.now().toString(36)}`,

@@ -3,7 +3,7 @@
  * Promise.allSettled for agents, with budget tracking.
  */
 
-import type { Agent, AgentOutput } from '../types/agent.js'
+import type { Agent } from '../types/agent.js'
 import type { Task } from '../types/task.js'
 import type { ExecutionResult } from '../types/execution.js'
 import type { SwarmEvent } from '../types/pattern.js'

@@ -3,7 +3,6 @@
  */
 
 import type { ExecutionResult } from '../types/execution.js'
-import type { CostSummary } from '../types/budget.js'
 
 export interface CostRecommendation {
   type: 'tier_downgrade' | 'caching' | 'early_stop' | 'agent_removal' | 'consolidation'

@@ -3,7 +3,7 @@
  */
 
 import type { Agent, AgentOutput } from '../types/agent.js'
-import type { Budget, CostEvent } from '../types/budget.js'
+import type { Budget } from '../types/budget.js'
 import type { ExecutionResult, ExecutionTrace, TraceSpan } from '../types/execution.js'
 import type { Plan, Step, StepInput } from '../types/plan.js'
 import type { Provider, ModelConfig } from '../types/provider.js'
@@ -12,7 +12,7 @@ import { isAgentRef } from '../types/plan.js'
 import { BudgetLedger } from '../budget/ledger.js'
 import { MessageBoard } from '../core/messageboard.js'
 import { buildAgentContext } from '../core/agent-context.js'
-import { runGuardrails, GuardrailTripped } from '../core/guardrails.js'
+import { runGuardrails } from '../core/guardrails.js'
 
 export interface ExecutorConfig {
   providers: Provider[]
