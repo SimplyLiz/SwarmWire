@@ -2,17 +2,16 @@
  * Executor — runs a Plan's DAG with parallel execution, budget enforcement, and tracing.
  */
 
-import type { Agent, AgentContext, AgentOutput, LlmCallOptions } from '../types/agent.js'
+import type { Agent, AgentOutput } from '../types/agent.js'
 import type { Budget, CostEvent } from '../types/budget.js'
-import type { ExecutionResult, ExecutionTrace, TraceSpan, EvidenceRef, Conflict } from '../types/execution.js'
+import type { ExecutionResult, ExecutionTrace, TraceSpan } from '../types/execution.js'
 import type { Plan, Step, StepInput } from '../types/plan.js'
-import type { Provider, LlmRequest, LlmResponse, ModelConfig } from '../types/provider.js'
+import type { Provider, ModelConfig } from '../types/provider.js'
 import type { SwarmEvent } from '../types/pattern.js'
-import type { AgentBoard } from '../types/agent.js'
 import { isAgentRef } from '../types/plan.js'
 import { BudgetLedger } from '../budget/ledger.js'
 import { MessageBoard } from '../core/messageboard.js'
-import { scopedBoard } from '../core/stub-board.js'
+import { buildAgentContext } from '../core/agent-context.js'
 import { runGuardrails, GuardrailTripped } from '../core/guardrails.js'
 
 export interface ExecutorConfig {
@@ -99,18 +98,17 @@ export async function executePlan<T = unknown>(
       const input = resolveInput(step.input, plan.task.input, stepResults)
 
       // Create agent context
-      const context = createAgentContext(
-        plan.id,
-        step.id,
+      const context = buildAgentContext({
+        executionId: plan.id,
+        stepId: step.id,
         agent,
         ledger,
-        config.providers,
-        config.defaultModel,
+        providers: config.providers,
+        defaultModel: config.defaultModel,
         stepResults,
         traceSpans,
         board,
-        config.emitEvent,
-      )
+      })
 
       // Run input guardrails (if configured)
       let guardedInput = input
@@ -315,129 +313,6 @@ function resolveInput(input: StepInput, taskInput: unknown, stepResults: Map<str
       return input.sources.map((s) => resolveInput(s, taskInput, stepResults))
     default:
       return taskInput
-  }
-}
-
-function createAgentContext(
-  executionId: string,
-  stepId: string,
-  agent: Agent,
-  ledger: BudgetLedger,
-  providers: Provider[],
-  defaultModel: ModelConfig | undefined,
-  stepResults: Map<string, unknown>,
-  traceSpans: TraceSpan[],
-  board: MessageBoard,
-  emitEvent?: (event: SwarmEvent) => void,
-): AgentContext {
-  const agentBoard = scopedBoard(agent.name, board)
-
-  return {
-    executionId,
-    budgetRemaining: ledger.remaining(),
-    board: agentBoard,
-
-    async llm(prompt: string, opts?: LlmCallOptions): Promise<string> {
-      const modelConfig = opts?.model ?? agent.model ?? defaultModel
-      if (!modelConfig) throw new Error(`No model configured for agent ${agent.name}`)
-
-      const provider = providers.find((p) => p.name === modelConfig.provider)
-      if (!provider) throw new Error(`Provider ${modelConfig.provider} not found`)
-
-      const spanStart = performance.now()
-      const request: LlmRequest = {
-        model: modelConfig.model,
-        systemPrompt: opts?.systemPrompt ?? agent.systemPrompt,
-        messages: [{ role: 'user', content: prompt }],
-        maxTokens: opts?.maxTokens ?? agent.maxTokens ?? 4096,
-        temperature: opts?.temperature ?? modelConfig.temperature,
-        responseFormat: opts?.responseFormat,
-      }
-
-      const response = await provider.chat(request)
-      const costCents = provider.estimateCost(modelConfig.model, response.inputTokens, response.outputTokens)
-
-      const costEvent: CostEvent = {
-        timestamp: Date.now(),
-        agentId: agent.id,
-        agentName: agent.name,
-        stepId,
-        provider: provider.name,
-        model: response.model,
-        inputTokens: response.inputTokens,
-        outputTokens: response.outputTokens,
-        cachedInputTokens: response.cachedInputTokens,
-        costCents,
-        durationMs: response.durationMs,
-      }
-
-      ledger.record(costEvent)
-
-      traceSpans.push({
-        id: `${stepId}_llm_${Date.now()}`,
-        parentId: stepId,
-        name: `llm:${modelConfig.model}`,
-        type: 'llm_call',
-        startedAt: spanStart,
-        completedAt: performance.now(),
-        durationMs: response.durationMs,
-        attributes: { model: modelConfig.model, provider: provider.name, structured: !!opts?.responseFormat },
-        costCents,
-        tokens: response.inputTokens + response.outputTokens,
-        status: 'ok',
-      })
-
-      // If responseFormat was requested, return parsed object; otherwise return string
-      if (opts?.responseFormat && response.parsed !== undefined) {
-        return response.parsed as never
-      }
-      if (opts?.responseFormat) {
-        // Provider didn't set parsed — try to parse the content as JSON
-        try { return JSON.parse(response.content) as never } catch { /* fall through to string */ }
-      }
-      return response.content as never
-    },
-
-    async tool<T>(name: string, input: unknown): Promise<T> {
-      const tool = agent.tools.find((t) => t.name === name)
-      if (!tool) throw new Error(`Tool ${name} not found on agent ${agent.name}`)
-
-      const spanStart = performance.now()
-      const result = await tool.execute(input)
-      const durationMs = performance.now() - spanStart
-
-      traceSpans.push({
-        id: `${stepId}_tool_${Date.now()}`,
-        parentId: stepId,
-        name: `tool:${name}`,
-        type: 'tool_call',
-        startedAt: spanStart,
-        completedAt: performance.now(),
-        durationMs,
-        attributes: { toolName: name },
-        status: 'ok',
-      })
-
-      return result as T
-    },
-
-    trace(event: string, data?: unknown): void {
-      traceSpans.push({
-        id: `${stepId}_trace_${Date.now()}`,
-        parentId: stepId,
-        name: event,
-        type: 'step',
-        startedAt: performance.now(),
-        completedAt: performance.now(),
-        durationMs: 0,
-        attributes: { data },
-        status: 'ok',
-      })
-    },
-
-    getStepOutput<T>(id: string): T | undefined {
-      return stepResults.get(id) as T | undefined
-    },
   }
 }
 

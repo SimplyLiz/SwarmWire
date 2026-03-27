@@ -48,7 +48,7 @@ export async function runDebate<T = unknown>(
       emitEvent?.({ type: 'step:start', stepId: `debate_r${round}_${proponent.name}`, agentName: proponent.name })
 
       try {
-        const context = buildAgentContext(task, proponent, ledger, providers, traceSpans, board)
+        const context = makeContext(task, proponent, ledger, providers, traceSpans, board)
         const otherArgs = [...previousArguments.entries()]
           .filter(([name]) => name !== proponent.name)
           .map(([name, arg]) => `${name}: ${arg}`)
@@ -98,7 +98,7 @@ export async function runDebate<T = unknown>(
     emitEvent?.({ type: 'step:start', stepId: 'debate_judge', agentName: judge.name })
 
     try {
-      const context = buildAgentContext(task, judge, ledger, providers, traceSpans, board)
+      const context = makeContext(task, judge, ledger, providers, traceSpans, board)
       const allArgs = [...previousArguments.entries()]
         .map(([name, arg]) => `### ${name}\n${arg}`)
         .join('\n\n---\n\n')
@@ -161,53 +161,14 @@ export async function runDebate<T = unknown>(
   }
 }
 
-function buildAgentContext(
-  task: Task,
-  agent: Agent,
-  ledger: BudgetLedger,
-  providers: Provider[],
-  traceSpans: TraceSpan[],
-  agentBoard?: import('../core/messageboard.js').MessageBoard,
+import { buildAgentContext as buildCtx } from '../core/agent-context.js'
+
+function makeContext(
+  task: Task, agent: Agent, ledger: BudgetLedger, providers: Provider[],
+  traceSpans: TraceSpan[], agentBoard?: import('../core/messageboard.js').MessageBoard,
 ) {
-  const boardView = agentBoard ? scopedBoard(agent.name, agentBoard) : stubBoard()
-  return {
-    executionId: task.id,
-    budgetRemaining: ledger.remaining(),
-    async llm(prompt: string): Promise<string> {
-      const modelConfig = agent.model
-      if (!modelConfig) throw new Error(`No model configured for agent ${agent.name}`)
-      const provider = providers.find((p) => p.name === modelConfig.provider)
-      if (!provider) throw new Error(`Provider ${modelConfig.provider} not found`)
-
-      const response = await provider.chat({
-        model: modelConfig.model,
-        systemPrompt: agent.systemPrompt,
-        messages: [{ role: 'user', content: prompt }],
-        maxTokens: agent.maxTokens ?? 4096,
-        temperature: modelConfig.temperature,
-      })
-
-      const costCents = provider.estimateCost(modelConfig.model, response.inputTokens, response.outputTokens)
-      ledger.record({
-        timestamp: Date.now(),
-        agentId: agent.id,
-        agentName: agent.name,
-        provider: provider.name,
-        model: response.model,
-        inputTokens: response.inputTokens,
-        outputTokens: response.outputTokens,
-        cachedInputTokens: response.cachedInputTokens,
-        costCents,
-        durationMs: response.durationMs,
-      })
-
-      return response.content
-    },
-    async tool<T>(_name: string, _input: unknown): Promise<T> { throw new Error('Tools not supported in debate context') },
-    trace(_event: string): void {},
-    getStepOutput<T>(): T | undefined { return undefined },
-    board: boardView,
-  }
+  return buildCtx({
+    executionId: task.id, stepId: `debate_${agent.name}`, agent, ledger, providers,
+    traceSpans, board: agentBoard,
+  })
 }
-
-import { stubBoard, scopedBoard } from '../core/stub-board.js'

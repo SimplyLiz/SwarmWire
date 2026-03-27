@@ -8,6 +8,7 @@
  */
 
 import type { Agent, AgentOutput } from '../types/agent.js'
+import { buildAgentContext as buildCtx } from '../core/agent-context.js'
 import type { Task } from '../types/task.js'
 import type { ExecutionResult, TraceSpan } from '../types/execution.js'
 import type { SwarmEvent } from '../types/pattern.js'
@@ -199,43 +200,25 @@ export class EvolvingOrchestrator {
   }
 
   private buildContext(
-    task: Task, agent: Agent, round: number, previousOutput: unknown,
+    task: Task, agent: Agent, _round: number, previousOutput: unknown,
     ledger: BudgetLedger, providers: Provider[], traceSpans: TraceSpan[],
     agentBoard?: import('../core/messageboard.js').MessageBoard,
   ) {
-    const boardView = agentBoard ? scopedBoard(agent.name, agentBoard) : stubBoard()
+    const stepResults = new Map<string, unknown>()
+    if (previousOutput !== undefined) stepResults.set('previous', previousOutput)
+
+    const ctx = buildCtx({
+      executionId: task.id, stepId: `evolve_${agent.name}`, agent, ledger, providers,
+      traceSpans, board: agentBoard, stepResults,
+    })
+
+    // Override getStepOutput to return previous round's output
     return {
-      executionId: task.id,
-      budgetRemaining: ledger.remaining(),
-      async llm(prompt: string): Promise<string> {
-        const modelConfig = agent.model
-        if (!modelConfig) throw new Error(`No model for agent ${agent.name}`)
-        const provider = providers.find((p) => p.name === modelConfig.provider)
-        if (!provider) throw new Error(`Provider ${modelConfig.provider} not found`)
-        const response = await provider.chat({
-          model: modelConfig.model,
-          systemPrompt: agent.systemPrompt,
-          messages: [{ role: 'user', content: prompt }],
-          maxTokens: agent.maxTokens ?? 4096,
-        })
-        const cost = provider.estimateCost(modelConfig.model, response.inputTokens, response.outputTokens)
-        ledger.record({
-          timestamp: Date.now(), agentId: agent.id, agentName: agent.name,
-          provider: provider.name, model: response.model,
-          inputTokens: response.inputTokens, outputTokens: response.outputTokens,
-          cachedInputTokens: response.cachedInputTokens, costCents: cost, durationMs: response.durationMs,
-        })
-        return response.content
-      },
-      async tool<T>(_n: string, _i: unknown): Promise<T> { throw new Error('Not supported') },
-      trace(_e: string): void {},
+      ...ctx,
       getStepOutput<T>(): T | undefined { return previousOutput as T },
-      board: boardView,
     }
   }
 }
-
-import { stubBoard, scopedBoard } from '../core/stub-board.js'
 
 function shuffle<T>(arr: T[]): T[] {
   for (let i = arr.length - 1; i > 0; i--) {

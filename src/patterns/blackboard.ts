@@ -169,53 +169,14 @@ export async function runBlackboard<T = unknown>(
   }
 }
 
+import { buildAgentContext as buildCtx } from '../core/agent-context.js'
+
 function buildContext(
-  task: Task,
-  agent: Agent,
-  ledger: BudgetLedger,
-  providers: Provider[],
-  _traceSpans: TraceSpan[],
-  agentBoard?: import('../core/messageboard.js').MessageBoard,
+  task: Task, agent: Agent, ledger: BudgetLedger, providers: Provider[],
+  _traceSpans: TraceSpan[], agentBoard?: import('../core/messageboard.js').MessageBoard,
 ) {
-  const boardView = agentBoard ? scopedBoard(agent.name, agentBoard) : stubBoard()
-  return {
-    executionId: task.id,
-    budgetRemaining: ledger.remaining(),
-    async llm(prompt: string): Promise<string> {
-      const modelConfig = agent.model
-      if (!modelConfig) throw new Error(`No model configured for agent ${agent.name}`)
-      const provider = providers.find((p) => p.name === modelConfig.provider)
-      if (!provider) throw new Error(`Provider ${modelConfig.provider} not found`)
-
-      const response = await provider.chat({
-        model: modelConfig.model,
-        systemPrompt: agent.systemPrompt,
-        messages: [{ role: 'user', content: prompt }],
-        maxTokens: agent.maxTokens ?? 4096,
-        temperature: modelConfig.temperature,
-      })
-
-      const costCents = provider.estimateCost(modelConfig.model, response.inputTokens, response.outputTokens)
-      ledger.record({
-        timestamp: Date.now(),
-        agentId: agent.id,
-        agentName: agent.name,
-        provider: provider.name,
-        model: response.model,
-        inputTokens: response.inputTokens,
-        outputTokens: response.outputTokens,
-        cachedInputTokens: response.cachedInputTokens,
-        costCents,
-        durationMs: response.durationMs,
-      })
-
-      return response.content
-    },
-    async tool<T>(_name: string, _input: unknown): Promise<T> { throw new Error('Tools not supported in blackboard context') },
-    trace(_event: string): void {},
-    getStepOutput<T>(): T | undefined { return undefined },
-    board: boardView,
-  }
+  return buildCtx({
+    executionId: task.id, stepId: `bb_${agent.name}`, agent, ledger, providers,
+    traceSpans: _traceSpans, board: agentBoard,
+  })
 }
-
-import { stubBoard, scopedBoard } from '../core/stub-board.js'
