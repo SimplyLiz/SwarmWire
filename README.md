@@ -337,15 +337,35 @@ swarm.register(externalAgent)
 ### Without Memory (default)
 Every execution is stateless. Results returned and forgotten.
 
-### With ANCS (coming soon)
-Persistent cognitive memory with truth tracking, entity graphs, and importance decay.
+### With CognitiveVault
+Persist agent messages across sessions and processes. Agents in different SwarmWire executions — or even MCP tools like Claude Code — see each other's work.
+
+```typescript
+import { Swarm } from 'swarmwire'
+import { CognitiveVaultBoard } from 'swarmwire/adapters'
+
+const board = new CognitiveVaultBoard({
+  apiUrl: 'https://cognitive-vault.com',
+  apiKey: process.env.CV_API_KEY!,
+  vaultId: 'vault-123',
+})
+await board.hydrate() // catch up on prior messages
+
+const swarm = new Swarm({ providers, board })
+// All agent messages now persist to CognitiveVault
+```
+
+Falls back to local file (`.swarmwire/board.jsonl`) when CV is unreachable. See [CognitiveVault integration guide](./docs/cognitive-vault-integration.md).
+
+### With ANCS
+Persistent cognitive memory with truth tracking, entity graphs, and importance decay. ANCS can run alongside CognitiveVault as its knowledge intelligence backend.
 ```typescript
 import { Swarm, ancsMemory } from 'swarmwire'
 
 const swarm = new Swarm({
   providers,
   memory: ancsMemory({
-    url: 'http://localhost:3000',
+    url: 'http://localhost:3100',
     tenantId: 'my-project',
   }),
 })
@@ -440,6 +460,8 @@ async execute(input: string, ctx: AgentContext) {
 ```
 
 Message types: `finding`, `warning`, `question`, `answer`, `coordination`, `status`, `custom`.
+
+**Persistence options:** The default `MessageBoard` is in-memory only. Use `FileBoard` for local persistence or `CognitiveVaultBoard` for cross-machine, cross-session durability. See [Adapters](./docs/adapters.md).
 Priorities: `normal`, `high`, `urgent`.
 
 The full `MessageBoard` class is also available standalone:
