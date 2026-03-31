@@ -151,6 +151,7 @@ export interface JsonRpcError {
 
 export interface MessageSendParams {
   taskId?: string
+  skillId?: string
   message: A2AMessage
   configuration?: TaskConfiguration
 }

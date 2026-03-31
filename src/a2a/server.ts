@@ -13,6 +13,8 @@ import { createServer, type IncomingMessage, type ServerResponse } from 'node:ht
 import type { Agent, AgentContext } from '../types/agent.js'
 import { toAgentCard, type ToAgentCardOptions } from './agent-card.js'
 import type {
+  AgentCard,
+  A2ATask,
   A2ATaskState,
   A2AMessage,
   A2AArtifact,
@@ -270,10 +272,14 @@ async function handleMessageSend(
     return
   }
 
-  // Find agent — use first agent or resolve by skill
-  const agent = resolveAgent(agentMap)
+  // Find agent — resolve by skillId or fall back to first
+  const agent = resolveAgent(agentMap, params.skillId)
   if (!agent) {
-    sendJsonRpcError(res, request.id, A2AErrorCodes.INTERNAL_ERROR, 'No agents available')
+    const errMsg = params.skillId
+      ? `No agent found with skill: ${params.skillId}`
+      : 'No agents available'
+    const errCode = params.skillId ? A2AErrorCodes.UNSUPPORTED_SKILL : A2AErrorCodes.INTERNAL_ERROR
+    sendJsonRpcError(res, request.id, errCode, errMsg)
     return
   }
 
@@ -323,9 +329,13 @@ async function handleMessageStream(
       task.inputResolve = undefined
     }
   } else {
-    const agent = resolveAgent(agentMap)
+    const agent = resolveAgent(agentMap, params.skillId)
     if (!agent) {
-      sendJsonRpcError(res, request.id, A2AErrorCodes.INTERNAL_ERROR, 'No agents available')
+      const errMsg = params.skillId
+        ? `No agent found with skill: ${params.skillId}`
+        : 'No agents available'
+      const errCode = params.skillId ? A2AErrorCodes.UNSUPPORTED_SKILL : A2AErrorCodes.INTERNAL_ERROR
+      sendJsonRpcError(res, request.id, errCode, errMsg)
       return
     }
     const contextId = params.configuration?.contextId ?? generateContextId()
@@ -592,6 +602,9 @@ function createServerTask(
   }
 }
 
+/** Default timeout for task execution if agent has no timeoutMs (5 minutes) */
+const DEFAULT_TASK_TIMEOUT_MS = 5 * 60 * 1000
+
 async function executeTask(agent: Agent, task: ServerTask, config: A2AServerConfig): Promise<void> {
   updateTaskState(task, 'working')
 
@@ -606,8 +619,15 @@ async function executeTask(agent: Agent, task: ServerTask, config: A2AServerConf
     ? config.contextFactory(task.id, agent)
     : createDefaultContext(task)
 
+  const timeoutMs = agent.timeoutMs ?? DEFAULT_TASK_TIMEOUT_MS
+
   try {
-    const result = await agent.execute(inputText, context)
+    const result = await Promise.race([
+      agent.execute(inputText, context),
+      new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error(`Task timed out after ${timeoutMs}ms`)), timeoutMs),
+      ),
+    ])
     const outputText = typeof result === 'string' ? result : JSON.stringify(result)
 
     const outputMessage: A2AMessage = { role: 'agent', parts: [{ type: 'text', text: outputText }] }
@@ -736,7 +756,18 @@ function isTerminal(state: A2ATaskState): boolean {
   return state === 'completed' || state === 'failed' || state === 'canceled' || state === 'rejected'
 }
 
-function resolveAgent(agentMap: Map<string, Agent>): Agent | undefined {
+/**
+ * Resolve which agent should handle a request.
+ * If skillId is provided, find the agent whose capabilities include that skill.
+ * Otherwise, fall back to the first (or only) registered agent.
+ */
+function resolveAgent(agentMap: Map<string, Agent>, skillId?: string): Agent | undefined {
+  if (skillId) {
+    for (const agent of agentMap.values()) {
+      if (agent.capabilities.includes(skillId)) return agent
+    }
+    return undefined // No agent has this skill
+  }
   return agentMap.values().next().value
 }
 

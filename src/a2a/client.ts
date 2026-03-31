@@ -190,77 +190,71 @@ async function executeViaStream(
     throw new Error('A2A stream response has no body')
   }
 
-  return new Promise<string>((resolve, reject) => {
-    const timeout = setTimeout(() => {
-      reject(new Error(`A2A stream timed out after ${timeoutMs}ms`))
-    }, timeoutMs)
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let collectedText = ''
+  let buffer = ''
+  const deadline = Date.now() + timeoutMs
 
-    let collectedText = ''
-    let buffer = ''
+  try {
+    while (true) {
+      if (Date.now() > deadline) {
+        throw new Error(`A2A stream timed out after ${timeoutMs}ms`)
+      }
 
-    const reader = res.body!.getReader()
-    const decoder = new TextDecoder()
+      const { done, value } = await reader.read()
+      if (done) break
 
-    function processChunk(): void {
-      reader.read().then(({ done, value }) => {
-        if (done) {
-          clearTimeout(timeout)
-          resolve(collectedText)
-          return
-        }
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
 
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
+      let finished = false
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (!data) continue
 
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            const data = line.slice(6).trim()
-            if (!data) continue
+        try {
+          const rpcResponse = JSON.parse(data) as JsonRpcResponse
+          if (rpcResponse.error) {
+            throw new Error(`A2A stream error: ${rpcResponse.error.message}`)
+          }
 
-            try {
-              const rpcResponse = JSON.parse(data) as JsonRpcResponse
-              if (rpcResponse.error) {
-                clearTimeout(timeout)
-                reject(new Error(`A2A stream error: ${rpcResponse.error.message}`))
-                return
+          const event = rpcResponse.result as A2AStreamEvent
+          config.onStreamEvent?.(event)
+
+          if (event.type === 'task.artifact.update') {
+            const artifactEvent = event as TaskArtifactUpdateEvent
+            for (const part of artifactEvent.artifact.parts) {
+              if (part.type === 'text') {
+                collectedText += (part as { type: 'text'; text: string }).text
               }
-
-              const event = rpcResponse.result as A2AStreamEvent
-              config.onStreamEvent?.(event)
-
-              if (event.type === 'task.artifact.update') {
-                const artifactEvent = event as TaskArtifactUpdateEvent
-                for (const part of artifactEvent.artifact.parts) {
-                  if (part.type === 'text') {
-                    collectedText += (part as { type: 'text'; text: string }).text
-                  }
-                }
-              }
-
-              if (event.type === 'task.status.update') {
-                const statusEvent = event as TaskStatusUpdateEvent
-                if (statusEvent.final) {
-                  clearTimeout(timeout)
-                  resolve(collectedText)
-                  return
-                }
-              }
-            } catch {
-              // Skip malformed SSE data
             }
           }
+
+          if (event.type === 'task.status.update') {
+            const statusEvent = event as TaskStatusUpdateEvent
+            if (statusEvent.final) {
+              finished = true
+              break
+            }
+          }
+        } catch (e) {
+          if (e instanceof Error && (e.message.includes('A2A stream error') || e.message.includes('timed out'))) {
+            throw e
+          }
+          // Skip malformed SSE data
         }
+      }
 
-        processChunk()
-      }).catch((err) => {
-        clearTimeout(timeout)
-        reject(err)
-      })
+      if (finished) break
     }
+  } finally {
+    await reader.cancel()
+  }
 
-    processChunk()
-  })
+  return collectedText
 }
 
 // ─── Cancel ────────────────────────────────────────────────────

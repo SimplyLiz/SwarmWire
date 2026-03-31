@@ -340,6 +340,70 @@ describe('A2A Server', () => {
     expect((authRpc.result as A2ATask).id).toBeTruthy()
   })
 
+  it('resolves agent by skillId', async () => {
+    const writer = createAgent({
+      name: 'writer',
+      role: 'Writes text',
+      capabilities: ['write', 'draft'],
+      execute: async (input) => `written: ${input}`,
+    })
+    const reviewer = createAgent({
+      name: 'reviewer',
+      role: 'Reviews text',
+      capabilities: ['review', 'critique'],
+      execute: async (input) => `reviewed: ${input}`,
+    })
+
+    const port = getPort()
+    server = startA2AServer({ port, agents: [writer, reviewer], host: '127.0.0.1' })
+    await new Promise((r) => setTimeout(r, 50))
+
+    // Request with skillId that matches reviewer
+    const res1 = await fetch(`http://127.0.0.1:${port}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 1, method: 'message/send',
+        params: {
+          skillId: 'review',
+          message: { role: 'user', parts: [{ type: 'text', text: 'check this' }] },
+        },
+      }),
+    })
+    const rpc1 = await res1.json() as JsonRpcResponse
+    expect(rpc1.error).toBeUndefined()
+
+    // Wait for completion and verify correct agent handled it
+    await new Promise((r) => setTimeout(r, 100))
+    const getRes = await fetch(`http://127.0.0.1:${port}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 2, method: 'tasks/get',
+        params: { id: (rpc1.result as A2ATask).id },
+      }),
+    })
+    const task = (await getRes.json() as JsonRpcResponse).result as A2ATask
+    expect(task.status.state).toBe('completed')
+    expect(task.artifacts![0]!.parts[0]).toEqual({ type: 'text', text: 'reviewed: check this' })
+
+    // Request with unknown skillId
+    const res2 = await fetch(`http://127.0.0.1:${port}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        jsonrpc: '2.0', id: 3, method: 'message/send',
+        params: {
+          skillId: 'nonexistent',
+          message: { role: 'user', parts: [{ type: 'text', text: 'hi' }] },
+        },
+      }),
+    })
+    const rpc2 = await res2.json() as JsonRpcResponse
+    expect(rpc2.error).toBeDefined()
+    expect(rpc2.error!.code).toBe(1004) // UNSUPPORTED_SKILL
+  })
+
   it('supports contextId for conversation grouping', async () => {
     const agent = createAgent({
       name: 'ctx-agent',
