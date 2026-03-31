@@ -4,45 +4,52 @@
  */
 
 import type { Agent } from '../types/agent.js'
+import type { AgentCard, AgentProvider, SecurityScheme } from './types.js'
 
-export interface AgentCard {
-  name: string
-  description: string
-  url: string
-  version: string
-  capabilities: AgentCapabilities
-  skills: AgentSkill[]
-  defaultInputModes: string[]
-  defaultOutputModes: string[]
-}
-
-export interface AgentCapabilities {
+export interface ToAgentCardOptions {
+  /** Protocol version to advertise. Default '0.3.0' */
+  protocolVersion?: string
+  /** Agent provider info */
+  provider?: AgentProvider
+  /** Icon URL */
+  iconUrl?: string
+  /** Documentation URL */
+  documentationUrl?: string
+  /** Security schemes supported */
+  securitySchemes?: Record<string, SecurityScheme>
+  /** Security requirements (OR-of-ANDs) */
+  security?: Record<string, string[]>[]
+  /** Whether to enable streaming */
   streaming?: boolean
+  /** Whether to enable push notifications */
   pushNotifications?: boolean
+  /** Whether to include state transition history */
   stateTransitionHistory?: boolean
-}
-
-export interface AgentSkill {
-  id: string
-  name: string
-  description: string
-  tags: string[]
-  examples?: string[]
+  /** Whether the agent supports an extended card for authenticated callers */
+  supportsAuthenticatedExtendedCard?: boolean
+  /** Default input MIME types. Default ['text/plain', 'application/json'] */
+  defaultInputModes?: string[]
+  /** Default output MIME types. Default ['text/plain', 'application/json'] */
+  defaultOutputModes?: string[]
 }
 
 /**
  * Generate an A2A Agent Card from a SwarmWire Agent.
  */
-export function toAgentCard(agent: Agent, baseUrl: string): AgentCard {
-  return {
+export function toAgentCard(agent: Agent, baseUrl: string, options?: ToAgentCardOptions): AgentCard {
+  const opts = options ?? {}
+
+  const card: AgentCard = {
+    kind: 'agentCard',
     name: agent.name,
     description: agent.role,
-    url: `${baseUrl}/a2a/${agent.name}`,
+    url: `${baseUrl}`,
     version: '0.1.0',
+    protocolVersion: opts.protocolVersion ?? '0.3.0',
     capabilities: {
-      streaming: false,
-      pushNotifications: false,
-      stateTransitionHistory: true,
+      streaming: opts.streaming ?? false,
+      pushNotifications: opts.pushNotifications ?? false,
+      stateTransitionHistory: opts.stateTransitionHistory ?? true,
     },
     skills: agent.capabilities.map((cap) => ({
       id: cap,
@@ -50,7 +57,18 @@ export function toAgentCard(agent: Agent, baseUrl: string): AgentCard {
       description: `Capability: ${cap}`,
       tags: [cap],
     })),
-    defaultInputModes: ['text/plain', 'application/json'],
-    defaultOutputModes: ['text/plain', 'application/json'],
+    defaultInputModes: opts.defaultInputModes ?? ['text/plain', 'application/json'],
+    defaultOutputModes: opts.defaultOutputModes ?? ['text/plain', 'application/json'],
   }
+
+  if (opts.provider) card.provider = opts.provider
+  if (opts.iconUrl) card.iconUrl = opts.iconUrl
+  if (opts.documentationUrl) card.documentationUrl = opts.documentationUrl
+  if (opts.securitySchemes) card.securitySchemes = opts.securitySchemes
+  if (opts.security) card.security = opts.security
+  if (opts.supportsAuthenticatedExtendedCard) card.supportsAuthenticatedExtendedCard = true
+
+  return card
 }
+
+export type { AgentCard, AgentCapabilities, AgentSkill } from './types.js'

@@ -134,8 +134,18 @@ export { ancsMemory } from './memory/ancs.js'
 export type { AncsMemoryConfig } from './memory/ancs.js'
 
 // A2A Protocol
-export { toAgentCard, startA2AServer, importA2AAgent } from './a2a/index.js'
-export type { AgentCard, AgentCapabilities, AgentSkill, A2AServerConfig, A2ATask, A2AClientConfig } from './a2a/index.js'
+export { toAgentCard, startA2AServer, importA2AAgent, cancelA2ATask, requestInput, A2AErrorCodes } from './a2a/index.js'
+export type {
+  AgentCard, AgentCapabilities, AgentSkill, AgentProvider, SecurityScheme,
+  A2AServerConfig, A2ATask, A2ATaskState, A2ATaskStatus, A2AArtifact,
+  A2AMessage, A2APart, TextPart, FilePart, DataPart,
+  A2AClientConfig, A2AClientAuth,
+  JsonRpcRequest, JsonRpcResponse, JsonRpcError,
+  MessageSendParams, TaskQueryParams, TaskIdParams,
+  PushNotificationConfig, TaskPushNotificationConfig,
+  TaskStatusUpdateEvent, TaskArtifactUpdateEvent, A2AStreamEvent,
+  ToAgentCardOptions,
+} from './a2a/index.js'
 
 // Worker Pool
 export { WorkerPool } from './pool/index.js'
