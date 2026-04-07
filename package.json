@@ -1,7 +1,7 @@
 {
   "name": "swarmwire",
-  "version": "1.0.3",
-  "description": "TypeScript multi-agent orchestration library with budget-first design. 7 patterns, 5-layer cost routing, record/replay testing, guardrails, evals, and plugin system.",
+  "version": "1.2.0",
+  "description": "TypeScript multi-agent orchestration library with budget-first design. Self-learning memory, vector search, 3-tier routing, 17 templates, knowledge graph, threat detection, ADRs.",
   "type": "module",
   "engines": {
     "node": ">=20"

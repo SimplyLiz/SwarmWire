@@ -38,7 +38,7 @@ npm run clean                # Remove dist/
 | **Workflow** | `src/workflow/` | YAML workflow parser + compiler to executable Plans |
 | **Templates** | `src/templates/` | 17 pre-built agent templates (researcher, code-reviewer, synthesizer, data-analyst, qa-tester, writer, planner, security-auditor, devops-engineer, database-engineer, api-designer, performance-engineer, documentation-specialist, architecture-advisor, debugger, refactoring-specialist, integration-specialist, test-automation-engineer) |
 | **Adapters** | `src/adapters/` | Claude Agent SDK wrapper |
-| **Orchestrator** | `src/orchestrator/` | Evolving orchestrator (bandit-based adaptive sequencing) |
+| **Orchestrator** | `src/orchestrator/` | Evolving orchestrator (bandit-based adaptive sequencing), **A/B testing engine**, **Judge agent for quality evaluation**, **Weight table for dynamic routing**, **Distillation collector for training pairs** |
 | **Persistence** | `src/persistence/` | Save/load state to disk or memory backend |
 | **Memory** | `src/memory/` | ANCS memory backend, **self-learning memory with EWC**, **vector memory with HNSW-like search** |
 | **Testing** | `src/testing/` | `RecordingProvider` (wraps real provider, saves fixtures), `ReplayProvider` (loads fixtures, zero-cost deterministic replay), evals framework |
