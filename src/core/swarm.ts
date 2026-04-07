@@ -26,16 +26,18 @@ import { PluginRegistry } from './plugins.js'
 import type { SwarmWirePlugin } from './plugins.js'
 
 export interface SwarmConfig {
-  providers: Provider[]
-  agents?: Agent[]
-  budget?: Budget
-  memory?: MemoryBackend
-  defaultModel?: ModelConfig
-  mergeStrategy?: MergeStrategy
-  conflictResolution?: ConflictStrategy
-  /** Shared MessageBoard for inter-agent communication. Persists across runs if injected.
-   *  Use CognitiveVaultBoard for CV persistence, FileBoard for local, or plain MessageBoard for ephemeral. */
-  board?: import('./messageboard.js').MessageBoard
+   providers: Provider[]
+   agents?: Agent[]
+   budget?: Budget
+   memory?: MemoryBackend
+   defaultModel?: ModelConfig
+   mergeStrategy?: MergeStrategy
+   conflictResolution?: ConflictStrategy
+   /** Shared MessageBoard for inter-agent communication. Persists across runs if injected.
+    *  Use CognitiveVaultBoard for CV persistence, FileBoard for local persistence, or plain MessageBoard for ephemeral. */
+   board?: import('./messageboard.js').MessageBoard
+   /** Configuration for FileBoard when used as default MessageBoard */
+   fileBoardConfig?: import('../adapters/file-board.js').FileBoardConfig
 }
 
 export type SwarmRunOptions = {
@@ -67,13 +69,20 @@ export class Swarm {
   private readonly eventHandlers: Map<string, EventHandler[]> = new Map()
   private readonly plugins = new PluginRegistry()
 
-  constructor(config: SwarmConfig) {
-    this.providers = config.providers
-    this.defaultBudget = config.budget ?? { maxCostCents: 100 }
-    this.memory = config.memory
-    this.defaultModel = config.defaultModel
-    this.board = config.board
-    if (config.agents) {
+constructor(config: SwarmConfig) {
+   this.providers = config.providers
+   this.defaultBudget = config.budget ?? { maxCostCents: 100 }
+   this.memory = config.memory
+   this.defaultModel = config.defaultModel
+   // Default to FileBoard for persistence, fallback to plain MessageBoard if config.board is explicitly set to null/undefined
+   if (config.board !== undefined) {
+     this.board = config.board
+   } else {
+     // Import FileBoard from compiled dist/ directory
+     const { FileBoard } = require('./dist/adapters/file-board.js')
+     this.board = new FileBoard(config.fileBoardConfig)
+   }
+   if (config.agents) {
       for (const agent of config.agents) {
         this.registeredAgents.set(agent.name, agent)
       }

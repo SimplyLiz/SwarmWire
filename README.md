@@ -74,6 +74,162 @@ console.log(`Cost: ${result.cost.totalCostCents}c | Tokens: ${result.cost.totalT
 
 ---
 
+## Intelligent Capabilities
+
+### Self-Learning Memory
+Pattern-based learning with Elastic Weight Consolidation (EWC) to prevent catastrophic forgetting.
+
+```typescript
+import { createSelfLearningMemory } from 'swarmwire'
+
+const memory = createSelfLearningMemory({
+  backend: ancsMemory({ url: 'http://localhost:3000' }),
+  learningRate: 0.1,
+  ewcStrength: 0.9,
+})
+```
+
+### Vector Memory
+HNSW-like approximate nearest neighbor search for semantic retrieval.
+
+```typescript
+import { createVectorMemory, mockEmbeddingFunction } from 'swarmwire'
+
+const vectorMem = createVectorMemory({
+  embedFn: mockEmbeddingFunction, // Or connect to actual embedding model
+  efSearch: 10,
+})
+```
+
+### 3-Tier Model Routing
+Automatically routes tasks to appropriate model complexity (cheap/standard/premium).
+
+```typescript
+import { routeTaskToModel, defaultModelRoutingConfig } from 'swarmwire'
+
+const decision = routeTaskToModel(task, availableModels, defaultModelRoutingConfig)
+// decision.tier, decision.estimatedCostCents, decision.estimatedLatencyMs
+```
+
+### Token Optimization
+Pattern caching, prompt compression, optimal batching (30-50% token savings).
+
+```typescript
+import { createTokenOptimizer } from 'swarmwire'
+
+const optimizer = createTokenOptimizer({ memoryBackend })
+const { context, tokensSaved } = await optimizer.getCompactContext(query)
+const { optimized, tokensSaved } = await optimizer.optimizePrompt(prompt)
+```
+
+### Knowledge Graph
+PageRank-based importance calculation, graph-enhanced ranked retrieval.
+
+```typescript
+import { createKnowledgeGraph } from 'swarmwire'
+
+const graph = createKnowledgeGraph()
+graph.addNode('task-1', 'API design', 'task')
+graph.addNode('agent-1', 'API designer', 'agent')
+graph.addEdge('task-1', 'agent-1', 'executed_by', 1.0)
+graph.calculatePageRank()
+```
+
+---
+
+## Enterprise-Grade Security
+
+### Threat Detection
+SQL injection, command injection, XSS, path traversal, hardcoded secrets.
+
+```typescript
+import { createThreatDetector, defaultThreatConfig } from 'swarmwire'
+
+const detector = createThreatDetector({
+  checkSqlInjection: true,
+  checkCommandInjection: true,
+  autoSanitize: true,
+})
+
+const result = detector.scan(userInput)
+// result.level: 'safe' | 'warning' | 'threat'
+// result.detectedPatterns[]
+```
+
+### PII Detection
+Email, SSN, phone, credit card, IP address detection.
+
+```typescript
+const piiFindings = detector.detectPII(input)
+// [{ type: 'email', value: 'user@example.com' }, ...]
+```
+
+---
+
+## Spec-Driven Development
+
+### ADR Framework
+Architecture Decision Records with Markdown serialization.
+
+```typescript
+import { createADRFramework, COMMON_ADRS } from 'swarmwire'
+
+const adr = createADRFramework()
+adr.create(COMMON_ADRS.modelRouting())
+adr.get('ADR-002')
+adr.checkCompliance('ADR-002', codeString)
+```
+
+---
+
+## Background Workers
+
+Continuous optimization (memory consolidation, pattern learning, metrics, health checks).
+
+```typescript
+import { createWorkerSystem, createMemoryOptimizationWorker } from 'swarmwire'
+
+const workers = createWorkerSystem({ memoryBackend })
+workers.registerWorker(...createMemoryOptimizationWorker())
+workers.startAll()
+```
+
+---
+
+## Agent Templates (17 Specialized Agents)
+
+Ready-to-use agents:
+
+```typescript
+import { Swarm, templates } from 'swarmwire'
+
+const swarm = new Swarm({ providers })
+
+// 7 original templates
+const researcher = swarm.agent(templates.researcher())
+const reviewer   = swarm.agent(templates.codeReviewer())
+const synth      = swarm.agent(templates.synthesizer())
+const analyst    = swarm.agent(templates.dataAnalyst())
+const tester     = swarm.agent(templates.qaTester())
+const writer     = swarm.agent(templates.writer())
+const planner    = swarm.agent(templates.planner())
+
+// 10 new specialized agents
+const security   = swarm.agent(templates.securityAuditor())
+const devops     = swarm.agent(templates.devopsEngineer())
+const dbEngineer = swarm.agent(templates.databaseEngineer())
+const apiDesigner= swarm.agent(templates.apiDesigner())
+const perfEngine = swarm.agent(templates.performanceEngineer())
+const docs       = swarm.agent(templates.documentationSpecialist())
+const architect  = swarm.agent(templates.architectureAdvisor())
+const debugger   = swarm.agent(templates.debugger())
+const refactor   = swarm.agent(templates.refactoringSpecialist())
+const integration= swarm.agent(templates.integrationSpecialist())
+const testAuto   = swarm.agent(templates.testAutomationEngineer())
+```
+
+---
+
 ## Orchestration Patterns
 
 ### Orchestrator-Worker (default)

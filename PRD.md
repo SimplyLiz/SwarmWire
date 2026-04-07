@@ -212,7 +212,7 @@ SwarmWire works without persistence (ephemeral mode). Plug in ANCS for persisten
 
 | Module | Responsibility | Key Types |
 |--------|---------------|-----------|
-| **Planner** | Decomposes tasks into executable DAGs. Scores difficulty. Selects execution mode (deep/swarm). | `Plan`, `Step`, `TaskScore` |
+| **Planner** | Decomposes tasks into executable DAGs. Scores difficulty. Selects execution mode (deep/swarm). Includes 3-tier intelligent routing. | `Plan`, `Step`, `TaskScore`, `RoutingDecision` |
 | **Router** | Maps tasks to agents based on capabilities, model tier, cost. Adaptive learning from outcomes. | `Route`, `AgentCapability`, `RoutingPolicy` |
 | **Executor** | Runs DAGs with parallelism, checkpointing, timeout, and retry. Respects budget constraints. | `Execution`, `Checkpoint`, `StepResult` |
 | **Budget Engine** | Tracks and enforces token, cost, and latency budgets across all operations. Hard limits. | `Budget`, `BudgetLedger`, `CostEvent` |
@@ -220,6 +220,12 @@ SwarmWire works without persistence (ephemeral mode). Plug in ANCS for persisten
 | **Conflict Resolver** | Detects contradictions in agent outputs. Resolves via voting, evidence weight, or escalation. | `Conflict`, `Resolution`, `MergeStrategy` |
 | **Trace Collector** | Records execution spans, costs, artifacts, and decisions. OpenTelemetry-compatible. | `Trace`, `Span`, `CostSpan` |
 | **Agent Runtime** | Manages agent lifecycle: pool, acquire, execute, release. Connection pooling, circuit breakers. | `Worker`, `WorkerPool`, `ConnectionPool` |
+| **Memory** | Pluggable memory backends. ANCS, self-learning with EWC, vector search with HNSW-like. | `MemoryBackend`, `LearningPattern`, `EWCMetadata` |
+| **Optimizer** | Token optimization via pattern caching, compression, and batch optimization. | `TokenOptimizer`, `CachedPattern` |
+| **Workers** | Background workers for continuous optimization, metrics, health checks. | `WorkerSystem`, `WorkerConfig` |
+| **Security** | Threat detection for injection, path traversal, secrets, PII detection. | `ThreatDetector`, `ThreatResult` |
+| **Spec** | Architecture Decision Records framework for spec-driven development. | `ADR`, `ADRFramework` |
+| **Graph** | Knowledge graph with PageRank-based importance and graph-enhanced search. | `KnowledgeNode`, `KnowledgeEdge`, `GraphSearchResult` |
 
 ---
 
@@ -942,9 +948,23 @@ swarm.on('provider:circuit-open', (provider) => { ... })
 - [x] Speculative cascade (parallel execution, latency vs cost tradeoff)
 - [x] Query decomposer (subtask splitting, per-subtask tier routing)
 
+### Phase 6: Intelligence Expansion -- DONE
+
+**Goal:** Self-learning, vector search, security, and spec-driven development.
+
+- [x] Self-learning memory with EWC (Elastic Weight Consolidation)
+- [x] Vector memory with HNSW-like approximate nearest neighbor search
+- [x] 3-tier intelligent model routing (cheap/standard/premium)
+- [x] Token optimizer (pattern caching, compression, batch optimization)
+- [x] Knowledge graph with PageRank-based importance
+- [x] Background worker system (memory optimizer, pattern learner, metrics, health check)
+- [x] Threat detection (SQL/command/XSS injection, path traversal, secrets, PII)
+- [x] ADR framework for spec-driven development
+- [x] 10 new agent templates (security-auditor, devops-engineer, database-engineer, api-designer, performance-engineer, documentation-specialist, architecture-advisor, debugger, refactoring-specialist, integration-specialist, test-automation-engineer)
+
 ### Current Stats
 
-68 source modules | 25 test files | 210 tests | 7 agent templates
+68 source modules | 25 test files | 210 tests | 17 agent templates
 
 ---
 
