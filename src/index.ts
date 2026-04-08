@@ -221,3 +221,31 @@ export type { ApprovalGate, ApprovalCallback } from './types/plan.js'
 // SSE Transport
 export { sseHeaders, sseEvent, pipeToSSE } from './transport/index.js'
 export type { PipeOptions } from './transport/index.js'
+
+// Hooks
+export { HookRegistry, HookPriority, bridgeSwarmEvents } from './hooks/index.js'
+export type { HookEvent, HookFn, HookContext, HookRegistration, HookStats } from './hooks/index.js'
+
+// Consensus
+export { RaftNode, ByzantineNode, GossipNode } from './consensus/index.js'
+export type { ConsensusConfig, ConsensusResult, LogEntry, GossipMessage } from './consensus/index.js'
+
+// Patterns — Hive-Mind
+export { runHiveMind } from './patterns/hive-mind.js'
+export type { HiveMindConfig, TaskAnalysis, DelegationPlan, AgentDomain } from './patterns/hive-mind.js'
+
+// Federation
+export { FederationHub } from './federation/index.js'
+export type { FederationConfig, SwarmRegistration, EphemeralAgent, ConsensusProposal as FederationProposal } from './federation/index.js'
+
+// Memory — ReasoningBank + Quantization
+export { ReasoningBank } from './memory/reasoning-bank.js'
+export { createQuantizer } from './memory/vector.js'
+export type { Trajectory, Pattern as ReasoningPattern, RetrievalResult, ReasoningBankConfig } from './memory/reasoning-bank.js'
+export type { QuantizationConfig, VectorCodec } from './memory/vector.js'
+
+// Planner — Attention + RL Routers
+export { AttentionRouter } from './planner/attention-router.js'
+export { RLRouter, RLRouterPPO } from './planner/rl-router.js'
+export type { AttentionRouterConfig, AttentionResult, AttentionMechanism } from './planner/attention-router.js'
+export type { RLRouterConfig, RLState, RLAction, Experience } from './planner/rl-router.js'
