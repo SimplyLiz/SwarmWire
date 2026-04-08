@@ -5,7 +5,7 @@
 import type { Agent, AgentOutput } from '../types/agent.js'
 import type { Budget } from '../types/budget.js'
 import type { ExecutionResult, ExecutionTrace, TraceSpan } from '../types/execution.js'
-import type { Plan, Step, StepInput } from '../types/plan.js'
+import type { Plan, Step, StepInput, CascadeTraceEntry } from '../types/plan.js'
 import type { Provider, ModelConfig } from '../types/provider.js'
 import type { SwarmEvent } from '../types/pattern.js'
 import { isAgentRef } from '../types/plan.js'
@@ -98,6 +98,7 @@ export async function executePlan<T = unknown>(
       const input = resolveInput(step.input, plan.task.input, stepResults)
 
       // Create agent context
+      const cascadeTraceRef: CascadeTraceEntry[] = []
       const context = buildAgentContext({
         executionId: plan.id,
         stepId: step.id,
@@ -108,6 +109,8 @@ export async function executePlan<T = unknown>(
         stepResults,
         traceSpans,
         board,
+        cascadeConfig: step.cascadeConfig,
+        cascadeTraceRef,
       })
 
       // Run input guardrails (if configured)
@@ -138,6 +141,7 @@ export async function executePlan<T = unknown>(
 
       step.output = result
       step.status = 'complete'
+      if (cascadeTraceRef.length > 0) step.cascadeTrace = cascadeTraceRef
       completed.add(step.id)
       stepResults.set(step.id, result)
 

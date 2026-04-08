@@ -3,10 +3,10 @@
  */
 
 import type { Agent } from '../types/agent.js'
-import type { Plan, Step, StepInput } from '../types/plan.js'
+import type { Plan, Step, StepInput, StepCascadeConfig } from '../types/plan.js'
 import type { Task } from '../types/task.js'
 import type { Budget } from '../types/budget.js'
-import type { WorkflowDef, WorkflowStepDef } from './parser.js'
+import type { WorkflowDef, WorkflowStepDef, WorkflowCascadeDef } from './parser.js'
 
 export interface CompileOptions {
   /** Map of agent names to Agent instances */
@@ -51,6 +51,7 @@ export function compileWorkflow(workflow: WorkflowDef, options: CompileOptions):
       retries: stepDef.retries,
       timeoutMs: stepDef.timeoutMs,
       status: 'pending' as const,
+      cascadeConfig: resolveCascadeConfig(workflow.cascade, stepDef.cascadeOverride),
     }
   })
 
@@ -74,6 +75,29 @@ export function compileWorkflow(workflow: WorkflowDef, options: CompileOptions):
       confidence: 0.4,
     },
     status: 'draft',
+  }
+}
+
+function resolveCascadeConfig(
+  workflowCascade: WorkflowCascadeDef | undefined,
+  stepOverride: 'enabled' | 'disabled' | null | undefined,
+): StepCascadeConfig | undefined {
+  // Step explicitly disabled — no cascade
+  if (stepOverride === 'disabled') return undefined
+
+  // Step explicitly enabled — use workflow settings (or defaults if no workflow config)
+  if (stepOverride === 'enabled') {
+    const base = workflowCascade ?? { enabled: true, threshold: 0.7, crossProvider: false, maxEscalations: 3 }
+    return { enabled: true, threshold: base.threshold, crossProvider: base.crossProvider, maxEscalations: base.maxEscalations }
+  }
+
+  // Inherit from workflow
+  if (!workflowCascade?.enabled) return undefined
+  return {
+    enabled: true,
+    threshold: workflowCascade.threshold,
+    crossProvider: workflowCascade.crossProvider,
+    maxEscalations: workflowCascade.maxEscalations,
   }
 }
 

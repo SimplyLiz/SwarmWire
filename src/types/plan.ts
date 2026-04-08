@@ -8,6 +8,26 @@ import type { BudgetEstimate, CostEvent } from './budget.js'
 import type { Task } from './task.js'
 
 export type PlanStatus = 'draft' | 'approved' | 'running' | 'complete' | 'failed'
+
+export interface StepCascadeConfig {
+  enabled: boolean
+  /** Quality threshold 0-1. Below this, escalate to next model. */
+  threshold: number
+  /** Allow escalation across provider boundaries. */
+  crossProvider: boolean
+  /** Max models to try per step before accepting best result. */
+  maxEscalations: number
+}
+
+export interface CascadeTraceEntry {
+  model: string
+  provider: string
+  tier: string
+  costCents: number
+  qualityScore: number
+  accepted: boolean
+  durationMs: number
+}
 export type StepStatus = 'pending' | 'running' | 'complete' | 'skipped' | 'failed'
 export type ExecutionMode = 'deep' | 'swarm'
 
@@ -34,6 +54,9 @@ export interface Step {
   output?: unknown
   cost?: CostEvent
   error?: string
+  /** Set when cascade routing was used for this step. */
+  cascadeConfig?: StepCascadeConfig
+  cascadeTrace?: CascadeTraceEntry[]
 }
 
 export interface ApprovalGate {

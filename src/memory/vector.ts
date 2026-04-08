@@ -92,9 +92,10 @@ export function createVectorMemory(config: VectorMemoryConfig): MemoryBackend {
        let filtered = similarities
        
        if (opts && opts.tags && Array.isArray(opts.tags) && opts.tags.length > 0) {
+         const tagsFilter = opts.tags!
          filtered = filtered.filter(item => {
            if (!item.meta || !Array.isArray(item.meta.tags)) return false;
-           return opts.tags.some(tag => 
+           return tagsFilter.some(tag =>
              Array.isArray(item.meta.tags) && item.meta.tags.includes(tag)
            );
          });
@@ -157,9 +158,9 @@ function cosineSimilarity(a: Vector, b: Vector): number {
   let magnitudeB = 0
   
   for (let i = 0; i < a.dimension; i++) {
-    dotProduct += a.values[i] * b.values[i]
-    magnitudeA += a.values[i] * a.values[i]
-    magnitudeB += b.values[i] * b.values[i]
+    dotProduct += a.values[i]! * b.values[i]!
+    magnitudeA += a.values[i]! * a.values[i]!
+    magnitudeB += b.values[i]! * b.values[i]!
   }
   
   if (magnitudeA === 0 || magnitudeB === 0) {

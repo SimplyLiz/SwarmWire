@@ -549,6 +549,27 @@ function estimateCallCost(rung: ModelRung, request: LlmRequest): number {
   return rung.provider.estimateCost(rung.model.model, estimatedInputTokens, estimatedOutputTokens)
 }
 
+// ─── Convenience functions ───
+
+/**
+ * Create a CascadeRouter with a clean API.
+ * Prefer this over `new CascadeRouter()` in application code.
+ */
+export function createCascadeRouter(
+  providers: Provider[],
+  config?: Pick<CascadeRouterConfig, 'qualityThreshold' | 'maxEscalations' | 'explorationRate' | 'qualityEstimator' | 'budget'>,
+): CascadeRouter {
+  return new CascadeRouter({ providers, ...config })
+}
+
+/**
+ * Route a request through a cascade router.
+ * Convenience wrapper around `router.route(request)`.
+ */
+export async function cascadeComplete(router: CascadeRouter, request: LlmRequest): Promise<CascadeResult> {
+  return router.route(request)
+}
+
 // ─── Stats ───
 
 export interface CascadeStats {

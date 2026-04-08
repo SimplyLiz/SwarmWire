@@ -4,6 +4,16 @@
  * Uses a minimal hand-rolled parser to avoid adding a yaml dependency.
  */
 
+export interface WorkflowCascadeDef {
+  enabled: boolean
+  /** Quality threshold 0-1. Default 0.7. */
+  threshold: number
+  /** Allow escalation across provider boundaries. Default false. */
+  crossProvider: boolean
+  /** Max models to try before accepting best result. Default 3. */
+  maxEscalations: number
+}
+
 export interface WorkflowDef {
   name: string
   version: string
@@ -11,6 +21,8 @@ export interface WorkflowDef {
   inputs: Record<string, WorkflowInputDef>
   outputs?: Record<string, string>
   steps: WorkflowStepDef[]
+  /** Workflow-level cascade routing config. Steps inherit unless overridden. */
+  cascade?: WorkflowCascadeDef
 }
 
 export interface WorkflowInputDef {
@@ -32,6 +44,8 @@ export interface WorkflowStepDef {
   optional?: boolean
   retries?: number
   timeoutMs?: number
+  /** 'enabled' / 'disabled' override workflow cascade setting. null = inherit. */
+  cascadeOverride?: 'enabled' | 'disabled' | null
 }
 
 /**
@@ -56,6 +70,24 @@ export function parseWorkflow(yaml: string): WorkflowDef {
     inputs: parseInputs(root.inputs),
     outputs: root.outputs as Record<string, string> | undefined,
     steps,
+    cascade: parseCascade(root.cascade),
+  }
+}
+
+function parseCascadeOverride(raw: unknown): 'enabled' | 'disabled' | null {
+  if (raw === 'enabled') return 'enabled'
+  if (raw === 'disabled') return 'disabled'
+  return null
+}
+
+function parseCascade(raw: unknown): WorkflowCascadeDef | undefined {
+  if (!raw || typeof raw !== 'object') return undefined
+  const obj = raw as Record<string, unknown>
+  return {
+    enabled: (obj.enabled as boolean) ?? false,
+    threshold: (obj.threshold as number) ?? 0.7,
+    crossProvider: (obj.cross_provider as boolean) ?? false,
+    maxEscalations: (obj.max_escalations as number) ?? 3,
   }
 }
 
@@ -97,6 +129,7 @@ function parseSteps(raw: unknown): WorkflowStepDef[] {
       optional: obj.optional as boolean | undefined,
       retries: obj.retries as number | undefined,
       timeoutMs: obj.timeout_ms as number | undefined,
+      cascadeOverride: parseCascadeOverride(obj.cascade_override),
     }
   })
 }

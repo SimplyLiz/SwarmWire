@@ -23,6 +23,7 @@ import { runOrchestratorWorker } from '../patterns/orchestrator-worker.js'
 import { runPipeline } from '../patterns/pipeline.js'
 import { runMapReduce } from '../patterns/map-reduce.js'
 import { PluginRegistry } from './plugins.js'
+import { FileBoard } from '../adapters/file-board.js'
 import type { SwarmWirePlugin } from './plugins.js'
 
 export interface SwarmConfig {
@@ -74,14 +75,13 @@ constructor(config: SwarmConfig) {
    this.defaultBudget = config.budget ?? { maxCostCents: 100 }
    this.memory = config.memory
    this.defaultModel = config.defaultModel
-   // Default to FileBoard for persistence, fallback to plain MessageBoard if config.board is explicitly set to null/undefined
    if (config.board !== undefined) {
      this.board = config.board
-   } else {
-     // Import FileBoard from compiled dist/ directory
-     const { FileBoard } = require('./dist/adapters/file-board.js')
+   } else if (config.fileBoardConfig !== undefined) {
+     // FileBoard is opt-in — only used when fileBoardConfig is explicitly provided
      this.board = new FileBoard(config.fileBoardConfig)
    }
+   // Otherwise: no persistent board — executor creates an ephemeral MessageBoard per run
    if (config.agents) {
       for (const agent of config.agents) {
         this.registeredAgents.set(agent.name, agent)
