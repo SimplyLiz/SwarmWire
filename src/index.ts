@@ -249,3 +249,55 @@ export { AttentionRouter } from './planner/attention-router.js'
 export { RLRouter, RLRouterPPO } from './planner/rl-router.js'
 export type { AttentionRouterConfig, AttentionResult, AttentionMechanism } from './planner/attention-router.js'
 export type { RLRouterConfig, RLState, RLAction, Experience } from './planner/rl-router.js'
+
+// Executor — Rollback + Time-Travel
+export { RollbackManager } from './executor/rollback.js'
+export type { ActionSnapshot, RollbackResult } from './executor/rollback.js'
+export { TimeTravelStore } from './executor/time-travel.js'
+export type { TimelineEntry, ForkOptions, ForkResult } from './executor/time-travel.js'
+
+// Session Management
+export { SessionManager } from './session/index.js'
+export type { Session, ConversationMessage, SessionConfig } from './session/index.js'
+
+// Eval Harness
+export { EvalHarness } from './testing/eval-harness.js'
+export type { HarnessConfig, HarnessRunRecord, HarnessReport } from './testing/eval-harness.js'
+
+// Prompt Optimizer
+export { PromptOptimizer } from './optimizer/prompt-optimizer.js'
+export type { PromptOptimizerConfig, OptimizationResult, FewShotExample, OptimizationMetric } from './optimizer/prompt-optimizer.js'
+
+// Memory — Episodic + Procedural
+export { EpisodicMemory } from './memory/episodic.js'
+export { ProceduralMemory } from './memory/procedural.js'
+export type { EpisodicEntry, EpisodicMemoryConfig } from './memory/episodic.js'
+export type { Procedure, ProcedureStep, ProceduralMemoryConfig } from './memory/procedural.js'
+
+// Workflow — Event-Driven
+export { EventFlow } from './workflow/event-driven.js'
+export type { FlowEvent, FlowContext, FlowStepDef, FlowStepHandler, EventFlowConfig, EventFlowResult } from './workflow/event-driven.js'
+
+// Patterns — Hierarchy
+export { runHierarchy } from './patterns/hierarchy.js'
+export type { HierarchyConfig, AuthorityLevel, AuthorityDecision } from './patterns/hierarchy.js'
+
+// Agent Discovery Catalog
+export { AgentCatalog } from './catalog/index.js'
+export type { CatalogEntry, CatalogConfig, DiscoveryQuery } from './catalog/index.js'
+
+// Tools — Code Sandbox
+export { createNodeSandbox, createDockerSandbox, createE2BSandbox, createCodeExecutionTool } from './tools/code-sandbox.js'
+export type { CodeSandbox, SandboxResult, NodeSandboxConfig, DockerSandboxConfig } from './tools/code-sandbox.js'
+
+// Tools — Browser
+export { createBrowserTool, createComputerUseTool } from './tools/browser.js'
+export type { BrowserAction, BrowserResult, BrowserConfig, ComputerUseConfig } from './tools/browser.js'
+
+// Voice Pipeline
+export { VoicePipeline } from './voice/index.js'
+export type { STTProvider, TTSProvider, VoicePipelineConfig, VoiceTurn } from './voice/index.js'
+
+// A2A — streamSubscribe
+export { streamSubscribe } from './a2a/client.js'
+export type { ContextId } from './a2a/types.js'

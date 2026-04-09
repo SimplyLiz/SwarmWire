@@ -5,6 +5,9 @@
 
 // ─── Agent Card ────────────────────────────────────────────────
 
+/** Alias for cross-task threading context identifier. */
+export type ContextId = string
+
 export interface AgentCard {
   kind: 'agentCard'
   name: string
@@ -22,6 +25,8 @@ export interface AgentCard {
   securitySchemes?: Record<string, SecurityScheme>
   security?: Record<string, string[]>[]
   supportsAuthenticatedExtendedCard?: boolean
+  /** Whether the agent is available for offline discovery. */
+  offline?: boolean
 }
 
 export interface AgentCapabilities {
@@ -56,6 +61,8 @@ export type SecurityScheme =
 export interface A2AMessage {
   role: 'user' | 'agent'
   parts: A2APart[]
+  messageId?: string
+  contextId?: ContextId
 }
 
 export type A2APart = TextPart | FilePart | DataPart
@@ -95,6 +102,7 @@ export interface DataPart {
 export type A2ATaskState =
   | 'submitted'
   | 'working'
+  | 'streaming'
   | 'input-required'
   | 'auth-required'
   | 'completed'
@@ -109,8 +117,9 @@ export interface A2ATaskStatus {
 }
 
 export interface A2ATask {
+  kind: 'task'
   id: string
-  contextId: string
+  contextId: ContextId
   status: A2ATaskStatus
   history?: A2AMessage[]
   artifacts?: A2AArtifact[]

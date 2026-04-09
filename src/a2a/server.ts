@@ -206,6 +206,10 @@ async function handleJsonRpc(
       handleTasksResubscribe(request, params as unknown as TaskIdParams, res, tasks)
       return
 
+    case 'tasks/sendSubscribe':
+      await handleTasksSendSubscribe(request, params as unknown as MessageSendParams, res, agentMap, tasks, config)
+      return
+
     case 'tasks/pushNotificationConfig/set':
       handlePushConfigSet(request, params as unknown as TaskPushNotificationConfig, res, tasks)
       return
@@ -438,6 +442,59 @@ function handleTasksCancel(
 
   updateTaskState(task, 'canceled')
   sendJsonRpcResult(res, request.id, serverTaskToA2ATask(task))
+}
+
+// ─── tasks/sendSubscribe ───────────────────────────────────────
+// Long-lived SSE subscription for the full task lifetime (ACP alignment)
+
+async function handleTasksSendSubscribe(
+  request: JsonRpcRequest,
+  params: MessageSendParams,
+  res: ServerResponse,
+  agentMap: Map<string, Agent>,
+  tasks: Map<string, ServerTask>,
+  config: A2AServerConfig,
+): Promise<void> {
+  if (!params.message?.parts?.length) {
+    sendJsonRpcError(res, request.id, A2AErrorCodes.INVALID_MESSAGE, 'Message with parts is required')
+    return
+  }
+
+  const agent = resolveAgent(agentMap, params.skillId)
+  if (!agent) {
+    const errMsg = params.skillId ? `No agent found with skill: ${params.skillId}` : 'No agents available'
+    const errCode = params.skillId ? A2AErrorCodes.UNSUPPORTED_SKILL : A2AErrorCodes.INTERNAL_ERROR
+    sendJsonRpcError(res, request.id, errCode, errMsg)
+    return
+  }
+
+  const contextId = params.configuration?.contextId ?? generateContextId()
+  const task = createServerTask(agent.name, contextId, params.message, params.configuration?.metadata)
+  tasks.set(task.id, task)
+
+  // Set up SSE stream before starting execution
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    'Connection': 'keep-alive',
+    'X-Accel-Buffering': 'no',
+    ...corsHeaders(),
+  })
+
+  task.subscribers.add(res)
+
+  // Send initial submitted status
+  writeSseEvent(res, request.id, {
+    type: 'task.status.update',
+    taskId: task.id,
+    status: { state: 'submitted', timestamp: isoNow() },
+    final: false,
+  })
+
+  const heartbeat = setInterval(() => { res.write(': heartbeat\n\n') }, 15_000)
+  req_onClose(res, () => { task.subscribers.delete(res); clearInterval(heartbeat) })
+
+  executeTask(agent, task, config).catch(() => updateTaskState(task, 'failed'))
 }
 
 // ─── tasks/resubscribe ─────────────────────────────────────────
@@ -773,6 +830,7 @@ function resolveAgent(agentMap: Map<string, Agent>, skillId?: string): Agent | u
 
 function serverTaskToA2ATask(task: ServerTask): A2ATask {
   return {
+    kind: 'task',
     id: task.id,
     contextId: task.contextId,
     status: {

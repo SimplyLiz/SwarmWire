@@ -16,6 +16,7 @@ import type {
   ConflictStrategy,
 } from '../types/pattern.js'
 import type { MemoryBackend } from '../types/memory.js'
+import type { SessionManager } from '../session/index.js'
 import { createAgent } from './agent-factory.js'
 import { buildPlan } from '../planner/planner.js'
 import { executePlan } from '../executor/executor.js'
@@ -39,6 +40,8 @@ export interface SwarmConfig {
    board?: import('./messageboard.js').MessageBoard
    /** Configuration for FileBoard when used as default MessageBoard */
    fileBoardConfig?: import('../adapters/file-board.js').FileBoardConfig
+   /** Session manager for persistent conversation threads. */
+   sessions?: SessionManager
 }
 
 export type SwarmRunOptions = {
@@ -67,6 +70,7 @@ export class Swarm {
   private readonly memory?: MemoryBackend
   private readonly defaultModel?: ModelConfig
   private readonly board?: import('./messageboard.js').MessageBoard
+  private readonly sessions?: SessionManager
   private readonly eventHandlers: Map<string, EventHandler[]> = new Map()
   private readonly plugins = new PluginRegistry()
 
@@ -82,6 +86,9 @@ constructor(config: SwarmConfig) {
      this.board = new FileBoard(config.fileBoardConfig)
    }
    // Otherwise: no persistent board — executor creates an ephemeral MessageBoard per run
+   if (config.sessions) {
+     this.sessions = config.sessions
+   }
    if (config.agents) {
       for (const agent of config.agents) {
         this.registeredAgents.set(agent.name, agent)
@@ -171,6 +178,34 @@ constructor(config: SwarmConfig) {
         }, this.providers, budget, emitEvent, this.board)
       }
     }
+  }
+
+  /** Run a task within a named session. Prepends conversation history to task input and records the result. */
+  async runInSession<T = unknown>(
+    sessionId: string,
+    taskOrDescription: string | Task,
+    options?: SwarmRunOptions,
+  ): Promise<ExecutionResult<T>> {
+    if (!this.sessions) throw new Error('No SessionManager configured in SwarmConfig.sessions')
+    const session = this.sessions.get(sessionId)
+    if (!session) throw new Error(`Session not found: ${sessionId}`)
+
+    const context = this.sessions.getContext(sessionId)
+    const task = normalizeTask(taskOrDescription)
+    const enrichedTask: Task = context
+      ? { ...task, input: `${context}\nUser: ${typeof task.input === 'string' ? task.input : JSON.stringify(task.input)}` }
+      : task
+
+    const result = await this.run<T>(enrichedTask, options)
+
+    const userInput = typeof taskOrDescription === 'string' ? taskOrDescription : task.description
+    const assistantOutput = typeof result.output === 'string' ? result.output : JSON.stringify(result.output)
+    this.sessions.record(sessionId, userInput, assistantOutput, {
+      executionId: result.plan.id,
+      costCents: result.cost.totalCostCents,
+    })
+
+    return result
   }
 
   /** Plan a task without executing — inspect/modify the plan first. */

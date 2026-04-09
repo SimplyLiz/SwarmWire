@@ -39,6 +39,8 @@ export interface A2AClientConfig {
   onInputRequired?: (prompt: string) => Promise<string>
   /** Callback for streaming updates */
   onStreamEvent?: (event: A2AStreamEvent) => void
+  /** Context ID for cross-task threading (ACP alignment). */
+  contextId?: string
 }
 
 export type A2AClientAuth =
@@ -255,6 +257,68 @@ async function executeViaStream(
   }
 
   return collectedText
+}
+
+// ─── tasks/sendSubscribe (long-lived SSE) ─────────────────────
+
+/**
+ * Subscribe to a new task via the tasks/sendSubscribe method.
+ * The SSE connection stays open for the full task lifetime.
+ */
+export async function streamSubscribe(
+  config: A2AClientConfig,
+  input: string,
+  onEvent: (event: A2AStreamEvent) => void,
+): Promise<void> {
+  const baseUrl = config.url.replace(/\/$/, '')
+  const id = Date.now()
+  const message: A2AMessage = { role: 'user', parts: [{ type: 'text', text: input }] }
+  const params: Record<string, unknown> = { message }
+  if (config.contextId) {
+    params.configuration = { contextId: config.contextId }
+  }
+
+  const request = { jsonrpc: '2.0', id, method: 'tasks/sendSubscribe', params }
+
+  const res = await fetchWithAuth(baseUrl, config.auth, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+
+  if (!res.ok || !res.body) {
+    throw new Error(`tasks/sendSubscribe failed: ${res.status}`)
+  }
+
+  const reader = res.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() ?? ''
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue
+        const data = line.slice(6).trim()
+        if (!data) continue
+        try {
+          const rpcResponse = JSON.parse(data) as { result?: A2AStreamEvent }
+          if (rpcResponse.result) {
+            onEvent(rpcResponse.result)
+            if (rpcResponse.result.type === 'task.status.update' && (rpcResponse.result as { final?: boolean }).final) {
+              return
+            }
+          }
+        } catch { /* skip malformed */ }
+      }
+    }
+  } finally {
+    await reader.cancel()
+  }
 }
 
 // ─── Cancel ────────────────────────────────────────────────────

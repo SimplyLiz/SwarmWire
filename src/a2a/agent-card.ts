@@ -7,7 +7,7 @@ import type { Agent } from '../types/agent.js'
 import type { AgentCard, AgentProvider, SecurityScheme } from './types.js'
 
 export interface ToAgentCardOptions {
-  /** Protocol version to advertise. Default '0.3.0' */
+  /** Protocol version to advertise. Default '1.0' */
   protocolVersion?: string
   /** Agent provider info */
   provider?: AgentProvider
@@ -45,7 +45,7 @@ export function toAgentCard(agent: Agent, baseUrl: string, options?: ToAgentCard
     description: agent.role,
     url: `${baseUrl}`,
     version: '0.1.0',
-    protocolVersion: opts.protocolVersion ?? '0.3.0',
+    protocolVersion: opts.protocolVersion ?? '1.0',
     capabilities: {
       streaming: opts.streaming ?? false,
       pushNotifications: opts.pushNotifications ?? false,

@@ -21,7 +21,7 @@ describe('A2A Agent Card', () => {
     expect(card.name).toBe('test-agent')
     expect(card.description).toBe('Does testing')
     expect(card.url).toBe('http://localhost:3000')
-    expect(card.protocolVersion).toBe('0.3.0')
+    expect(card.protocolVersion).toBe('1.0')
     expect(card.skills.length).toBe(2)
     expect(card.skills[0]!.id).toBe('test')
     expect(card.defaultInputModes).toContain('text/plain')
@@ -86,7 +86,7 @@ describe('A2A Server', () => {
     const card = await res.json()
     expect(card.kind).toBe('agentCard')
     expect(card.name).toBe('echo')
-    expect(card.protocolVersion).toBe('0.3.0')
+    expect(card.protocolVersion).toBe('1.0')
   })
 
   it('also serves agent card at legacy /.well-known/agent.json', async () => {
