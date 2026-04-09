@@ -152,5 +152,6 @@ function createMinimalContext(): import('../types/agent.js').AgentContext {
       warnings() { return [] },
       reply() {},
     },
+    deps: {},
   }
 }

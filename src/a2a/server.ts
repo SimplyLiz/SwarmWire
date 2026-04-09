@@ -732,6 +732,7 @@ function createDefaultContext(task: ServerTask): AgentContext {
       warnings() { return [] },
       reply() {},
     },
+    deps: {},
   } as AgentContext
 }
 

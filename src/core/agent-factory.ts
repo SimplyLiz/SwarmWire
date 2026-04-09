@@ -6,12 +6,12 @@ import type { Agent, AgentDefinition, AgentContext } from '../types/agent.js'
 
 let agentCounter = 0
 
-export function createAgent<TInput = unknown, TOutput = unknown>(
-  def: AgentDefinition<TInput, TOutput>,
-): Agent<TInput, TOutput> {
+export function createAgent<TInput = unknown, TOutput = unknown, TDeps = Record<string, unknown>>(
+  def: AgentDefinition<TInput, TOutput, TDeps>,
+): Agent<TInput, TOutput, TDeps> {
   const id = `agent_${++agentCounter}_${def.name}`
 
-  const executeFn = (def.execute ?? defaultExecute) as (input: TInput, context: AgentContext) => Promise<TOutput>
+  const executeFn = (def.execute ?? defaultExecute) as (input: TInput, context: AgentContext<TDeps>) => Promise<TOutput>
 
   return {
     id,
@@ -26,6 +26,7 @@ export function createAgent<TInput = unknown, TOutput = unknown>(
     maxCostCents: def.maxCostCents,
     timeoutMs: def.timeoutMs,
     guardrails: def.guardrails,
+    deps: def.deps ?? ({} as TDeps),
     execute: executeFn,
   }
 }

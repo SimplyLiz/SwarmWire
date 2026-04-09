@@ -214,5 +214,7 @@ export function buildAgentContext(config: AgentContextConfig): AgentContext {
     getStepOutput<T>(id: string): T | undefined {
       return stepResults.get(id) as T | undefined
     },
+
+    deps: (agent.deps ?? {}) as Record<string, unknown>,
   }
 }

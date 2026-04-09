@@ -250,6 +250,54 @@ export { RLRouter, RLRouterPPO } from './planner/rl-router.js'
 export type { AttentionRouterConfig, AttentionResult, AttentionMechanism } from './planner/attention-router.js'
 export type { RLRouterConfig, RLState, RLAction, Experience } from './planner/rl-router.js'
 
+// Executor — Trajectory Reducer + Speculative Tools
+export { reduceTrajectory, classifyMessage } from './executor/trajectory-reducer.js'
+export type { TrajectoryMessage, ReducerConfig, ReducerStats } from './executor/trajectory-reducer.js'
+export { SpeculativeToolExecutor, createKeywordPredictor } from './executor/speculative-tools.js'
+export type { SpeculativeToolConfig, SpeculativePrediction, PrefetchResult, SpeculativeStats } from './executor/speculative-tools.js'
+
+// Tools — Skill Reducer
+export { createReducedSkillSet, createReducedSkillSetAsync, selectRelevantTools } from './tools/skill-reducer.js'
+export type { SkillSummary, SkillReducerConfig, ReducedSkillSet } from './tools/skill-reducer.js'
+
+// Memory — A-MEM + Temporal + Self-Editing + Vector Stores
+export { AMem } from './memory/a-mem.js'
+export type { AMemNote, AMemConfig } from './memory/a-mem.js'
+export { TemporalMemory } from './memory/temporal.js'
+export type { TemporalNote, TemporalMemoryConfig } from './memory/temporal.js'
+export { SelfEditingMemory } from './memory/self-editing.js'
+export type { MemoryBlock, BlockEdit, SelfEditingMemoryConfig } from './memory/self-editing.js'
+export { createFlatVectorStore, createPineconeStore, createQdrantStore, createRedisVectorStore } from './memory/vector-stores.js'
+export type { VectorStoreConfig, PineconeConfig, QdrantConfig, RedisVectorConfig } from './memory/vector-stores.js'
+
+// Core — Reputation Board
+export { ReputationBoard } from './core/reputation-board.js'
+export type { ReputationScore, ReputationConfig, WeightedMessage } from './core/reputation-board.js'
+
+// Testing — Trajectory Eval
+export { evalTrajectory, compareTrajectories } from './testing/trajectory-eval.js'
+export type { Trajectory as EvalTrajectory, TrajectoryStep, TrajectoryEvalConfig, TrajectoryEvalResult, TrajectoryCompareResult } from './testing/trajectory-eval.js'
+
+// Workers — Sleep-Time Agent
+export { SleepTimeAgent } from './workers/sleep-time-agent.js'
+export type { SleepTimeAgentConfig, ConsolidationResult } from './workers/sleep-time-agent.js'
+
+// Workflow — State Machine
+export { StateMachine, buildLinearStateMachine, END } from './workflow/state-machine.js'
+export type { StateNode, StateEdge, StateMachineConfig, StateMachineResult, StateMachineContext } from './workflow/state-machine.js'
+
+// Patterns — Loop Agent
+export { runLoop, loopResultToExecution } from './patterns/loop-agent.js'
+export type { LoopAgentConfig, LoopResult } from './patterns/loop-agent.js'
+
+// Session — Conversation Branching
+export { BranchManager } from './session/branch.js'
+export type { BranchedSession, BranchPoint, BranchTree, BranchManagerConfig } from './session/branch.js'
+
+// Trace — OTel Auto-Exporter
+export { exportToOTLP, createOTelExporter, withOTelExport } from './trace/otel-exporter.js'
+export type { OTelExporterConfig, ExportResult } from './trace/otel-exporter.js'
+
 // Executor — Rollback + Time-Travel
 export { RollbackManager } from './executor/rollback.js'
 export type { ActionSnapshot, RollbackResult } from './executor/rollback.js'

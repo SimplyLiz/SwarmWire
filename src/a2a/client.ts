@@ -82,6 +82,7 @@ export async function importA2AAgent(config: A2AClientConfig): Promise<Agent> {
     maxTokens: undefined,
     maxCostCents: undefined,
     timeoutMs,
+    deps: {},
 
     async execute(input: unknown, _context: AgentContext): Promise<unknown> {
       const text = typeof input === 'string' ? input : JSON.stringify(input)

@@ -51,6 +51,7 @@ export async function fromClaudeAgentSDK(config: ClaudeAgentConfig): Promise<Age
     maxTokens: config.maxTokens,
     maxCostCents: undefined,
     timeoutMs: 120_000,
+    deps: {},
 
     async execute(input: unknown, _context: AgentContext): Promise<unknown> {
       const prompt = typeof input === 'string' ? input : JSON.stringify(input)

@@ -8,7 +8,7 @@ import type { Tool } from './tool.js'
 import type { ModelConfig, ModelTier, ResponseFormat } from './provider.js'
 import type { GuardrailConfig } from '../core/guardrails.js'
 
-export interface AgentContext {
+export interface AgentContext<TDeps = Record<string, unknown>> {
   /** Unique execution ID */
   executionId: string
   /** Budget remaining for this agent's step */
@@ -25,6 +25,11 @@ export interface AgentContext {
   getStepOutput<T = unknown>(stepId: string): T | undefined
   /** MessageBoard for inter-agent communication */
   board: AgentBoard
+  /**
+   * Typed dependency injection — services, repositories, or clients available
+   * to this agent. Declared in AgentDefinition<TInput, TOutput, TDeps>.
+   */
+  deps: TDeps
 }
 
 /** Agent's view of the MessageBoard — scoped to their identity */
@@ -59,7 +64,7 @@ export interface LlmCallOptions {
   responseFormat?: ResponseFormat
 }
 
-export interface AgentDefinition<TInput = unknown, TOutput = unknown> {
+export interface AgentDefinition<TInput = unknown, TOutput = unknown, TDeps = Record<string, unknown>> {
   name: string
   role: string
   capabilities?: string[]
@@ -71,10 +76,15 @@ export interface AgentDefinition<TInput = unknown, TOutput = unknown> {
   maxCostCents?: number
   timeoutMs?: number
   guardrails?: GuardrailConfig
-  execute?: (input: TInput, context: AgentContext) => Promise<TOutput>
+  /**
+   * Typed dependencies injected into context.deps at execution time.
+   * Declare the shape here; provide the values when constructing via createAgent().
+   */
+  deps?: TDeps
+  execute?: (input: TInput, context: AgentContext<TDeps>) => Promise<TOutput>
 }
 
-export interface Agent<TInput = unknown, TOutput = unknown> {
+export interface Agent<TInput = unknown, TOutput = unknown, TDeps = Record<string, unknown>> {
   readonly id: string
   readonly name: string
   readonly role: string
@@ -87,7 +97,8 @@ export interface Agent<TInput = unknown, TOutput = unknown> {
   readonly maxCostCents?: number
   readonly timeoutMs?: number
   readonly guardrails?: GuardrailConfig
-  execute(input: TInput, context: AgentContext): Promise<TOutput>
+  readonly deps: TDeps
+  execute(input: TInput, context: AgentContext<TDeps>): Promise<TOutput>
 }
 
 export type AgentResultStatus = 'completed' | 'failed' | 'skipped'
