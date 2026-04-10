@@ -192,7 +192,7 @@ export class ByzantineNode {
   }
 
   private async handlePrepare(msg: BftMessage): Promise<void> {
-    let state = this.phases.get(msg.seqNum)
+    const state = this.phases.get(msg.seqNum)
     if (!state) {
       // Buffer the prepare for when PrePrepare arrives
       const buf = this.prepareBuffer.get(msg.seqNum) ?? new Set()
@@ -221,7 +221,7 @@ export class ByzantineNode {
   }
 
   private async handleCommit(msg: BftMessage): Promise<void> {
-    let state = this.phases.get(msg.seqNum)
+    const state = this.phases.get(msg.seqNum)
     if (!state) {
       // Buffer commit for when state arrives
       const buf = this.commitBuffer.get(msg.seqNum) ?? new Set()

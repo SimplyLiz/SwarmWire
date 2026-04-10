@@ -19,7 +19,7 @@
  */
 
 import { MessageBoard } from '../core/messageboard.js'
-import type { Message, PostOptions } from '../core/messageboard.js'
+import type { Message, MessageType, PostOptions } from '../core/messageboard.js'
 import { FileBoard } from './file-board.js'
 
 export interface CognitiveVaultBoardConfig {
@@ -134,8 +134,8 @@ export class CognitiveVaultBoard extends MessageBoard {
 
       // Inject into the in-memory board without re-persisting
       super.post(from || 'unknown', to || '*', entry.content, {
-        type: msgType as any,
-        priority: priority as any,
+        type: msgType as MessageType,
+        priority: priority as Message['priority'],
         channel: channel || undefined,
         data: { cvEntryId: entry.id, hydrated: true },
       })

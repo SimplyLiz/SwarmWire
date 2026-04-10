@@ -62,8 +62,8 @@ export interface WorkerSystemConfig {
 
 export function createWorkerSystem(config: WorkerSystemConfig) {
   const {
-    memoryBackend,
-    defaultIntervalMs = 60000, // 1 minute
+    memoryBackend: _memoryBackend,
+    defaultIntervalMs: _defaultIntervalMs = 60000, // 1 minute
     defaultTimeoutMs = 300000, // 5 minutes
     maxWorkers = 20
   } = config

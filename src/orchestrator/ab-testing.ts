@@ -4,7 +4,6 @@
  * Ported from LLMRouter/FrugalRoute
  */
 
-import type { Agent } from '../types/agent.js'
 
 export interface Experiment {
   id: string

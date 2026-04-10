@@ -61,8 +61,8 @@ Authors: {authors}
 
 export function createADRFramework(options: ADRParserOptions = {}) {
   const {
-    adrDir = './docs/adrs',
-    fileExtension = '.md',
+    adrDir: _adrDir = './docs/adrs',
+    fileExtension: _fileExtension = '.md',
     autoNumber = true
   } = options
 

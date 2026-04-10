@@ -55,8 +55,8 @@ export function createKnowledgeGraph(config: KnowledgeGraphConfig = {}) {
   const {
     dampingFactor = 0.85,
     maxIterations = 100,
-    minImportance = 0.001,
-    autoLink = true,
+    minImportance: _minImportance = 0.001,
+    autoLink: _autoLink = true,
     similarityThreshold = 0.7
   } = config
 

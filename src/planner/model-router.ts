@@ -6,7 +6,6 @@
 
 import type { Task } from '../types/task.js'
 import type { ModelConfig, ModelTier } from '../types/provider.js'
-import type { Agent } from '../types/agent.js'
 
 // Task complexity indicators
 export interface ComplexityIndicators {
@@ -48,7 +47,7 @@ export interface ModelRoutingConfig {
  */
 export function analyzeTaskComplexity(
   task: Task,
-  config: ModelRoutingConfig
+  _config: ModelRoutingConfig
 ): ComplexityIndicators {
   const description = task.description.toLowerCase()
   
@@ -138,7 +137,7 @@ export function analyzeTaskComplexity(
  */
 export function calculateComplexityScore(
   indicators: ComplexityIndicators,
-  config: ModelRoutingConfig
+  _config: ModelRoutingConfig
 ): number {
   // Normalize each indicator to 0-1 range (rough approximations)
   const normalizedLength = Math.min(1.0, indicators.length / 500) // 500 chars = max

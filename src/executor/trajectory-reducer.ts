@@ -96,7 +96,7 @@ export function reduceTrajectory(
     const systemMsgs = result.filter((m) => m.role === 'system')
     const nonSystem = result.filter((m) => m.role !== 'system')
 
-    let i = 0
+    const i = 0
     while (total > maxTokenBudget && i < nonSystem.length) {
       total -= nonSystem[i]!.estimatedTokens ?? 0
       nonSystem.splice(i, 1)

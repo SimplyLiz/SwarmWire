@@ -131,7 +131,7 @@ export class JudgeAgent {
     if (!this.judgeModel) return null
 
     try {
-      const result = await (this.judgeModel.execute as any)(
+      const result = await (this.judgeModel.execute as (input: string, ctx: unknown) => Promise<unknown>)(
         `Rate the following response on a scale of 0 to 10 for accuracy, completeness, and helpfulness. Reply with only a number.\n\nOriginal prompt: ${originalPrompt}\n\nResponse to evaluate: ${typeof output.output === 'string' ? output.output : JSON.stringify(output.output)}`,
         {
           executionId: `judge_${Date.now()}`,

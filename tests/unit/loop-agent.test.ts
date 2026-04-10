@@ -61,8 +61,8 @@ describe('runLoop', () => {
       role: 'recorder',
       execute: async (input) => { inputs.push(input); return `step:${String(input)}` },
     })
-    let iter = 0
-    await runLoop(0, {
+    const iter = 0
+    await runLoop(iter, {
       agent,
       provider: mockProvider(['x']),
       model: { model: 'test-model' },

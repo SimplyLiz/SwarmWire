@@ -5,9 +5,6 @@
  */
 
 import type { MemoryBackend, MemoryItem, StoreMeta, QueryOpts } from '../types/memory.js'
-import type { Agent, AgentContext } from '../types/agent.js'
-import type { Task } from '../types/task.js'
-import type { ExecutionResult } from '../types/execution.js'
 
 // Pattern storage for learning which agents work best for which tasks
 export interface LearningPattern {
@@ -47,7 +44,7 @@ export function createSelfLearningMemory(config: SelfLearningMemoryConfig): Memo
     backend,
     learningRate = 0.1,
     importanceDecay = 0.01,
-    minConfidence = 0.7,
+    minConfidence: _minConfidence = 0.7,
     ewcStrength = 0.9
   } = config
 
@@ -90,7 +87,7 @@ export function createSelfLearningMemory(config: SelfLearningMemoryConfig): Memo
   async function updateLearningPattern(
     patternId: string,
     pattern: LearningPattern,
-    meta: StoreMeta
+    _meta: StoreMeta
   ): Promise<void> {
     const existing = learningPatterns.get(patternId)
 
@@ -144,7 +141,7 @@ export function createSelfLearningMemory(config: SelfLearningMemoryConfig): Memo
       // Check if this item matches any learned patterns
       let relevanceBoost = 0
       
-      for (const [patternId, pattern] of learningPatterns.entries()) {
+      for (const [, pattern] of learningPatterns.entries()) {
         // Simple similarity check - in production would use embeddings
         if (
           pattern.taskDescription.toLowerCase().includes(query.toLowerCase()) ||
@@ -167,63 +164,4 @@ export function createSelfLearningMemory(config: SelfLearningMemoryConfig): Memo
     }).sort((a, b) => b.relevance - a.relevance) // Sort by relevance descending
   }
 
-  // Get the best agent for a task based on learned patterns
-  function getBestAgentForTask(
-    task: Task,
-    availableAgents: Agent[]
-  ): Agent | null {
-    if (learningPatterns.size === 0) return null
-
-    let bestAgent: Agent | null = null
-    let bestScore = 0
-
-    for (const agent of availableAgents) {
-      let agentScore = 0
-      let patternCount = 0
-
-      for (const pattern of learningPatterns.values()) {
-        if (
-          pattern.taskDescription.toLowerCase().includes(task.description.toLowerCase()) &&
-          pattern.agentRole.toLowerCase() === agent.role.toLowerCase()
-        ) {
-          agentScore += pattern.successScore * pattern.confidence
-          patternCount++
-        }
-      }
-
-      if (patternCount > 0) {
-        const avgScore = agentScore / patternCount
-        if (avgScore > bestScore) {
-          bestScore = avgScore
-          bestAgent = agent
-        }
-      }
-    }
-
-    return bestScore >= minConfidence ? bestAgent : null
-  }
-
-  // Record a successful execution for learning
-  function recordSuccessfulExecution(
-    task: Task,
-    agent: Agent,
-    result: ExecutionResult<any>,
-    meta: StoreMeta
-  ): Promise<void> {
-    const patternId = `pattern_${task.description}_${agent.role}`
-
-    const pattern: LearningPattern = {
-      taskDescription: task.description,
-      agentRole: agent.role,
-      successScore: result.output !== undefined ? 1.0 : 0.0,
-      executionCount: 1,
-      lastUsed: Date.now(),
-      confidence: 0.5 // Start with moderate confidence
-    }
-
-    return backend.store(patternId, pattern, {
-      ...meta,
-      tags: [...(meta.tags || []), 'learning-pattern']
-    })
-  }
 }

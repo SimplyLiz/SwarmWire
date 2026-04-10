@@ -15,7 +15,7 @@
 import { existsSync, mkdirSync, appendFileSync, readFileSync, statSync, unlinkSync, renameSync, truncateSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { MessageBoard } from '../core/messageboard.js'
-import type { Message, PostOptions } from '../core/messageboard.js'
+import type { Message, MessageType, PostOptions } from '../core/messageboard.js'
 
 export interface FileBoardConfig {
    /** Path to the JSONL file (default: .swarmwire/board.jsonl) */
@@ -158,8 +158,8 @@ export class FileBoard extends MessageBoard {
                if (filterSession && msg.sessionId !== filterSession) continue
 
                super.post(msg.from, msg.to, msg.content, {
-                  type: msg.type as any,
-                  priority: msg.priority as any,
+                  type: msg.type as MessageType,
+                  priority: msg.priority as Message['priority'],
                   channel: msg.channel,
                   data: { ...(msg.data as object ?? {}), _hydrated: true, _fileId: msg.id },
                })

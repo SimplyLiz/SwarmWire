@@ -14,6 +14,11 @@
 
 import type { MemoryBackend, StoreMeta, QueryOpts, MemoryItem } from '../types/memory.js'
 
+// ─── Internal ───
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type AnyFn = (...args: any[]) => unknown
+
 // ─── Shared types ───
 
 export interface VectorStoreConfig {
@@ -97,7 +102,7 @@ export function createPineconeStore(config: PineconeConfig): MemoryBackend {
   const ns = config.namespace ?? 'swarmwire'
   let clientPromise: Promise<unknown> | null = null
 
-  async function getIndex(): Promise<{ upsert: Function; query: Function; deleteOne: Function }> {
+  async function getIndex(): Promise<{ upsert: AnyFn; query: AnyFn; deleteOne: AnyFn }> {
     if (!clientPromise) {
       clientPromise = (async () => {
         // Lazy import — only requires peer dep if actually used
@@ -106,7 +111,7 @@ export function createPineconeStore(config: PineconeConfig): MemoryBackend {
         return (pc as { index: (name: string) => unknown }).index(config.indexName)
       })()
     }
-    return clientPromise as Promise<{ upsert: Function; query: Function; deleteOne: Function }>
+    return clientPromise as Promise<{ upsert: AnyFn; query: AnyFn; deleteOne: AnyFn }>
   }
 
   return {
@@ -162,7 +167,7 @@ export function createQdrantStore(config: QdrantConfig): MemoryBackend {
   const ns = config.namespace ?? 'swarmwire'
   let clientPromise: Promise<unknown> | null = null
 
-  async function getClient(): Promise<{ upsert: Function; search: Function; delete: Function }> {
+  async function getClient(): Promise<{ upsert: AnyFn; search: AnyFn; delete: AnyFn }> {
     if (!clientPromise) {
       clientPromise = (async () => {
         const { QdrantClient } = await import('@qdrant/js-client-rest' as string)
@@ -172,7 +177,7 @@ export function createQdrantStore(config: QdrantConfig): MemoryBackend {
         })
       })()
     }
-    return clientPromise as Promise<{ upsert: Function; search: Function; delete: Function }>
+    return clientPromise as Promise<{ upsert: AnyFn; search: AnyFn; delete: AnyFn }>
   }
 
   return {
@@ -231,16 +236,16 @@ export function createRedisVectorStore(config: RedisVectorConfig): MemoryBackend
   const indexName = config.indexName ?? 'swarmwire_idx'
   let clientPromise: Promise<unknown> | null = null
 
-  async function getClient(): Promise<{ hSet: Function; ft: { search: Function; create?: Function }; hDel: Function; connect: Function }> {
+  async function getClient(): Promise<{ hSet: AnyFn; ft: { search: AnyFn; create?: AnyFn }; hDel: AnyFn; connect: AnyFn }> {
     if (!clientPromise) {
       clientPromise = (async () => {
         const { createClient } = await import('redis' as string)
-        const client = (createClient as Function)({ url: config.url ?? 'redis://localhost:6379' })
-        await client.connect()
+        const client = (createClient as AnyFn)({ url: config.url ?? 'redis://localhost:6379' })
+        await (client as { connect: AnyFn }).connect()
         return client
       })()
     }
-    return clientPromise as Promise<{ hSet: Function; ft: { search: Function; create?: Function }; hDel: Function; connect: Function }>
+    return clientPromise as Promise<{ hSet: AnyFn; ft: { search: AnyFn; create?: AnyFn }; hDel: AnyFn; connect: AnyFn }>
   }
 
   return {
