@@ -13,6 +13,8 @@ Save and restore SwarmWire state across sessions. Checkpoint and resume plan exe
 3. [Differential Execution](#differential-execution)
 4. [State Serialization Format](#state-serialization-format)
 5. [Recovery Patterns](#recovery-patterns)
+6. [Time-Travel Debugging](#time-travel-debugging)
+7. [Agent Rollback](#agent-rollback)
 
 ---
 
@@ -415,6 +417,8 @@ await executePendingSteps(newPlan)
 
 ### Pattern 4: Dual persistence (file + memory backend)
 
+
+
 ```typescript
 import { saveState, saveStateToMemory, loadState, loadStateFromMemory } from './persistence/store.js'
 
@@ -426,4 +430,145 @@ await Promise.all([
 
 // Load with fallback
 const state = await loadStateFromMemory(memoryBackend) ?? await loadState('.swarmwire/state.json')
+```
+
+---
+
+## Time-Travel Debugging
+
+**Source:** `src/executor/time-travel.ts`
+
+Records a timeline entry after each step completes. At any point you can rewind to a previous step and fork execution from there with optional modifications.
+
+```typescript
+import { TimeTravelStore } from 'swarmwire'
+
+const ttStore = new TimeTravelStore(100)  // keep last 100 timeline entries
+
+// Pass to ExecutorConfig — timeline is recorded automatically
+const result = await executePlan(plan, {
+  providers,
+  budget,
+  timelineStore: ttStore,
+})
+
+// Inspect the timeline
+const timeline = ttStore.getTimeline(plan.id)
+// [{ stepId, stepName, checkpoint, capturedAt }]
+
+// Rewind to a specific step
+const checkpoint = ttStore.rewindTo(plan.id, 'step_3')
+// checkpoint is the state captured immediately after step_3 completed
+
+// Fork from step_3 with a modified step
+const fork = await ttStore.fork(plan.id, {
+  fromStepId: 'step_3',
+  modifications: [
+    { id: 'step_4', agentName: 'alternate-agent' },  // swap agent for step_4
+  ],
+}, { providers, budget })
+
+console.log(fork.execution.output)    // result of the forked execution
+console.log(fork.forkedFromStep)      // 'step_3'
+console.log(fork.divergedAt)          // timestamp when fork diverged
+
+// Export/import timeline (for persistence)
+const exported = ttStore.export()
+ttStore.import(exported)
+```
+
+### TimeTravelStore API
+
+```typescript
+class TimeTravelStore {
+  constructor(maxHistory?: number)  // default 100
+
+  record(planId, stepId, stepName, plan, outputs, costEvents): void
+  getTimeline(planId): TimelineEntry[]
+  rewindTo(planId, stepId): Checkpoint | null
+  fork<T>(planId, options: ForkOptions, config: ExecutorConfig): Promise<ForkResult<T>>
+  clear(planId): void
+  export(): Record<string, TimelineEntry[]>
+  import(data): void
+}
+
+interface ForkOptions {
+  fromStepId: string
+  modifications?: Partial<Step>[]
+}
+```
+
+---
+
+## Agent Rollback
+
+**Source:** `src/executor/rollback.ts`
+
+Captures before-state snapshots before tool calls. Supports undoing individual actions or entire executions in reverse order.
+
+```typescript
+import { RollbackManager } from 'swarmwire'
+
+const rollback = new RollbackManager(200)  // keep last 200 snapshots
+
+// Pass to ExecutorConfig — snapshots captured automatically around tool calls
+const result = await executePlan(plan, {
+  providers,
+  budget,
+  rollbackManager: rollback,
+})
+
+// After execution — inspect snapshots
+const snapshots = rollback.getSnapshots(result.executionId)
+// [{ id, executionId, stepId, agentName, actionType, beforeState, afterState, reversible }]
+
+// Undo a specific action
+const undoResult = rollback.rollback(snapshots[2].id)
+// { snapshotId, restored: true }
+
+// Undo all reversible actions in the execution (reverse order)
+const results = rollback.undoExecution(result.executionId)
+// [{ snapshotId, restored }]
+
+// Clear snapshot history for an execution
+rollback.clear(result.executionId)
+```
+
+### Tool rollback integration
+
+Tools can define a `rollback` handler that is called when `RollbackManager.rollback()` targets a `tool_call` snapshot:
+
+```typescript
+const writeFileTool: Tool = {
+  name: 'write_file',
+  description: 'Write content to a file',
+  parameters: { type: 'object', properties: { path: { type: 'string' }, content: { type: 'string' } } },
+  execute: async ({ path, content }) => {
+    const prev = await readFile(path).catch(() => null)
+    await writeFile(path, content)
+    return { path, written: content.length }
+  },
+  rollback: async (output, input) => {
+    // Restore previous content on rollback
+    if (input.previousContent !== undefined) {
+      await writeFile(input.path, input.previousContent)
+    }
+  },
+}
+```
+
+### ActionSnapshot shape
+
+```typescript
+interface ActionSnapshot {
+  id: string
+  executionId: string
+  stepId: string
+  agentName: string
+  actionType: string     // 'llm_call' | 'tool_call' | 'file_write' | ...
+  beforeState: unknown
+  afterState?: unknown
+  timestamp: number
+  reversible: boolean
+}
 ```

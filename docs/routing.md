@@ -81,6 +81,11 @@ Supporting components:
 7. [Adaptive Router](#adaptive-router)
 8. [Full Stack Example](#full-stack-example)
 9. [Cost Savings Benchmarks](#cost-savings-benchmarks)
+10. [Trajectory Reducer](#trajectory-reducer)
+11. [Speculative Tool Executor](#speculative-tool-executor)
+12. [Skill Reducer (Prompt Compression)](#skill-reducer-prompt-compression)
+13. [OTel Auto-Export](#otel-auto-export)
+14. [OpenTelemetry Export](#opentelemetry-export)
 
 
 ---
@@ -795,6 +800,160 @@ Key variables that affect real-world savings:
 - **Number of model tiers** -- more tiers = finer-grained routing
 - **Quality threshold** -- lower threshold = more cheap-model acceptance = more savings
 
+
+---
+
+## Trajectory Reducer
+
+**Source:** `src/executor/trajectory-reducer.ts`
+**Paper:** AgentDiet (arXiv)
+
+Prunes expired, redundant, and superseded messages from a conversation trajectory before passing it to the LLM. Achieves 39-60% input token reduction with no quality loss.
+
+```typescript
+import { reduceTrajectory, classifyMessage } from 'swarmwire'
+
+const messages = [
+  { role: 'tool', content: '...search results...', toolName: 'search', toolCallId: 't1' },
+  { role: 'tool', content: '', toolName: 'read_file', toolCallId: 't2' },   // empty — will be dropped
+  { role: 'tool', content: '...same results...', toolName: 'search', toolCallId: 't3' }, // duplicate
+  { role: 'assistant', content: 'Based on the search results...' },
+]
+
+const reduced = reduceTrajectory(messages, {
+  dropEmpty: true,          // drop blank tool results. Default true
+  dropDuplicates: true,     // drop identical consecutive tool results. Default true
+  dropSuperseded: true,     // drop results overwritten by a later call to the same tool. Default true
+  tokenBudget: 4000,        // trim oldest results if still over budget. Default none
+  preserveRoles: ['system', 'user'],  // never drop these
+})
+
+console.log(reduced.stats)
+// { original: 4, kept: 2, dropped: 2, tokensSaved: ~1200 }
+console.log(reduced.messages)  // pruned message array
+
+// Classify a single message
+const type = classifyMessage(msg)
+// 'empty' | 'duplicate' | 'superseded' | 'keep'
+```
+
+### ReducerConfig
+
+```typescript
+interface ReducerConfig {
+  dropEmpty?: boolean           // default true
+  dropDuplicates?: boolean      // default true
+  dropSuperseded?: boolean      // default true
+  tokenBudget?: number          // trim oldest if over budget
+  preserveRoles?: string[]      // roles that are never dropped
+}
+```
+
+---
+
+## Speculative Tool Executor
+
+**Source:** `src/executor/speculative-tools.ts`
+**Paper:** PASTE (arXiv)
+
+Prefetches likely tool calls in parallel while the LLM generates its response. If the prefetch matches what the LLM eventually requests, the result is ready immediately — zero wait time for that tool call.
+
+```typescript
+import { SpeculativeToolExecutor, createKeywordPredictor } from 'swarmwire'
+
+// Keyword-based predictor: if message contains "search", prefetch the search tool
+const predictor = createKeywordPredictor({
+  'search': ['search_web'],
+  'file': ['read_file', 'list_files'],
+  'code': ['execute_code'],
+})
+
+const executor = new SpeculativeToolExecutor({
+  tools,
+  predictor,
+  maxPrefetch: 3,            // max concurrent prefetches. Default 3
+  prefetchConfidence: 0.5,   // min confidence to prefetch. Default 0.5
+})
+
+// Pre-start predicted tools while LLM generates
+await executor.prefetch('Search for TypeScript generics tutorial')
+
+// When LLM asks for the tool — result may already be cached
+const result = await executor.execute('search_web', { query: 'TypeScript generics' })
+
+// Stats
+const stats = executor.stats()
+// { prefetches: 5, hits: 3, hitRate: 0.6, tokensSavedMs: 4200 }
+```
+
+### Custom predictor
+
+```typescript
+import type { SpeculativePrediction } from 'swarmwire'
+
+const myPredictor = (message: string): SpeculativePrediction[] => [
+  { toolName: 'search_web', confidence: 0.8, estimatedInput: { query: message } },
+]
+
+const executor = new SpeculativeToolExecutor({ tools, predictor: myPredictor })
+```
+
+---
+
+## Skill Reducer (Prompt Compression)
+
+**Source:** `src/tools/skill-reducer.ts`
+**Paper:** ToolBench progressive skill disclosure (~48% prompt compression)
+
+See [docs/tools.md](./tools.md#skill-reducer--progressive-disclosure) for the full reference.
+
+Quick example:
+
+```typescript
+import { createReducedSkillSet, selectRelevantTools } from 'swarmwire'
+
+const { summaries, full } = createReducedSkillSet(myTools)
+// Phase 1: send summaries (~48% fewer tokens)
+// Phase 2: expand only selected tools
+const selected = selectRelevantTools(full, ['search_web'])
+```
+
+---
+
+## OTel Auto-Export
+
+**Source:** `src/trace/otel-exporter.ts`
+
+Automatically pushes traces to any OTLP/HTTP endpoint after execution. No manual span building required.
+
+```typescript
+import { exportToOTLP, withOTelExport, createOTelExporter } from 'swarmwire'
+
+// One-shot export after execution
+const result = await swarm.execute('analyze this codebase')
+await exportToOTLP(result, {
+  endpoint: 'http://localhost:4318',
+  serviceName: 'my-swarm-app',
+  timeoutMs: 5000,
+})
+
+// Transparent wrapper — run + export in one call
+const result2 = await withOTelExport(
+  () => swarm.execute('analyze this codebase'),
+  { endpoint: process.env.OTEL_ENDPOINT!, serviceName: 'my-swarm-app' },
+)
+
+// Reusable exporter instance
+const exporter = createOTelExporter({
+  endpoint: 'https://api.honeycomb.io',
+  headers: { 'x-honeycomb-team': process.env.HONEYCOMB_KEY! },
+  serviceName: 'my-swarm-app',
+})
+
+await exporter.export(result)
+```
+
+See the [OpenTelemetry Export](#opentelemetry-export) section below for the lower-level `toOTelSpans` / `toOTLPJson` API.
 
 ---
 

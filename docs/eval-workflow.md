@@ -346,3 +346,143 @@ Fixture management:
 | `noHallucination()` | No hedging/uncertainty markers | 0-1 |
 
 All evals return 0-1 scores. Suite passes when average >= threshold.
+
+---
+
+## EvalHarness — Named Harnesses with History
+
+**Source:** `src/testing/eval-harness.ts`
+
+Wraps an `EvalSuite` with run history, pass-rate tracking, and regression detection. Useful for monitoring agent quality over time in CI.
+
+```typescript
+import { EvalHarness } from 'swarmwire'
+
+const harness = new EvalHarness({
+  name: 'code-review-quality',
+  suite: myEvalSuite,
+  greenThreshold: 0.8,   // pass rate required for "green". Default 0.8
+  storage: memoryBackend, // optional — persist history
+})
+
+// Run the harness — execFn provides (input, output) to the eval suite
+const record = await harness.run(async () => {
+  const result = await swarm.execute('Review this code')
+  return { input: 'Review this code', output: result.output }
+})
+
+console.log(record.averageScore)  // 0-1
+console.log(record.passed)        // true if score >= greenThreshold
+console.log(record.results)       // per-eval breakdown
+
+// Full report with trend analysis
+const report = harness.report()
+console.log(report.passRate)      // fraction of runs that passed
+console.log(report.trend)         // 'improving' | 'stable' | 'degrading'
+console.log(report.regressions)   // eval names that regressed vs last run
+
+// Check if this run regressed vs the previous
+const regressed = harness.checkRegression(record)
+
+// Raw history
+const history = harness.getHistory()
+// [{ runId, timestamp, averageScore, passed, results }]
+```
+
+### HarnessReport shape
+
+```typescript
+interface HarnessReport {
+  harnessName: string
+  totalRuns: number
+  passRate: number              // fraction of runs that passed
+  lastRun?: HarnessRunRecord
+  trend: 'improving' | 'stable' | 'degrading'  // based on last 3 runs
+  regressions: string[]         // eval names that scored worse
+}
+```
+
+### CI integration
+
+```typescript
+// vitest / jest example
+import { describe, it, expect } from 'vitest'
+
+describe('code-review harness', () => {
+  it('stays green', async () => {
+    const record = await harness.run(async () => ({
+      input: testInput,
+      output: await swarm.execute(testInput),
+    }))
+    expect(record.passed).toBe(true)
+    expect(harness.checkRegression(record)).toBe(false)
+  })
+})
+```
+
+---
+
+## Trajectory Evaluation
+
+**Source:** `src/testing/trajectory-eval.ts`
+**Paper:** TRACE multi-dimension trajectory evaluation
+
+Evaluate the quality of an agent's execution trajectory across five dimensions. Useful for measuring improvement across iterations or comparing two approaches.
+
+```typescript
+import { evalTrajectory, compareTrajectories } from 'swarmwire'
+
+const trajectory = {
+  steps: [
+    { type: 'tool_call', toolName: 'search_web', input: { query: '...' }, output: '...' },
+    { type: 'tool_call', toolName: 'read_file', input: { path: '...' }, output: '...' },
+    { type: 'llm_call', prompt: '...', response: 'Final answer...' },
+  ],
+  finalOutput: 'Final answer...',
+  expectedOutput: 'Expected answer...',
+  plannedSteps: ['search_web', 'analyze', 'summarize'],
+}
+
+const result = await evalTrajectory(trajectory, {
+  expectedOutput: 'Expected answer...',
+  plannedSteps: ['search_web', 'analyze', 'summarize'],
+  maxExpectedSteps: 5,
+
+  // Custom outcome scorer (optional)
+  outcomeScorer: async (output, expected) => {
+    return output.includes(expected) ? 1.0 : 0.5
+  },
+})
+
+console.log(result.dimensions)
+// {
+//   stepEfficiency: 0.8,    // actual steps / expected steps (closer to 1 = better)
+//   toolPrecision: 0.9,     // fraction of tool calls that produced useful output
+//   backtrackRate: 0.1,     // fraction of steps that reversed previous work
+//   planAdherence: 0.7,     // LCS(actual, planned) / planned.length
+//   outcomeQuality: 0.85,   // custom scorer or text similarity to expected
+// }
+
+console.log(result.overallScore)   // weighted average
+console.log(result.passed)         // true if overallScore >= threshold
+
+// Compare two trajectories
+const comparison = await compareTrajectories(trajectoryA, trajectoryB, config)
+console.log(comparison.better)     // 'a' | 'b' | 'tie'
+console.log(comparison.scoreA)
+console.log(comparison.scoreB)
+console.log(comparison.delta)
+console.log(comparison.breakdown)  // per-dimension winner
+```
+
+### Dimension weights
+
+| Dimension | Default Weight | What it measures |
+|-----------|---------------|-----------------|
+| `stepEfficiency` | 0.2 | Avoids unnecessary extra steps |
+| `toolPrecision` | 0.2 | Tool calls return useful, non-empty results |
+| `backtrackRate` | 0.2 | Low redundancy and contradiction |
+| `planAdherence` | 0.2 | Follows the intended plan (LCS-based) |
+| `outcomeQuality` | 0.2 | Final output quality vs expected |
+
+Weights are configurable via `TrajectoryEvalConfig.weights`.

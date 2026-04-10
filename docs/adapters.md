@@ -11,7 +11,8 @@ Adapters connect SwarmWire to external systems: LLM SDKs and message persistence
 1. [Claude Agent SDK Adapter](#claude-agent-sdk-adapter)
 2. [FileBoard (Local Persistence)](#fileboard-local-persistence)
 3. [CognitiveVaultBoard (Cloud Persistence)](#cognitivevaultboard-cloud-persistence)
-4. [When to Use Which](#when-to-use-which)
+4. [Voice Pipeline](#voice-pipeline)
+5. [When to Use Which](#when-to-use-which)
 
 ---
 
@@ -294,6 +295,89 @@ board.isUsingFallback // true if CV is down and fallback is active
 
 ```typescript
 await board.flush() // waits for both CV persist queue and file fallback
+```
+
+---
+
+## Voice Pipeline
+
+**Source:** `src/voice/index.ts`
+
+Streaming STT → LLM → TTS pipeline. Accepts an audio buffer, transcribes speech, runs an agent, synthesizes the response back to audio.
+
+```typescript
+import { VoicePipeline } from 'swarmwire'
+
+const pipeline = new VoicePipeline({
+  stt: VoicePipeline.createDeepgramSTT(process.env.DEEPGRAM_API_KEY!),
+  tts: VoicePipeline.createElevenLabsTTS(process.env.ELEVENLABS_KEY!, 'voice-id'),
+  agent: myAgent,
+  provider: anthropicProvider,
+  model: { provider: 'anthropic', model: 'claude-haiku-4-5-20251001' },
+})
+
+// Process one voice turn
+const turn = await pipeline.processTurn(audioBuffer)
+console.log(turn.input)        // transcribed speech
+console.log(turn.output)       // agent response text
+console.log(turn.audioOutput)  // Buffer — synthesized audio (play or stream)
+console.log(turn.durationMs)   // end-to-end latency
+
+// Serve over WebSocket
+ws.on('message', async (audioBuffer) => {
+  const turn = await pipeline.processTurn(audioBuffer)
+  ws.send(turn.audioOutput)
+})
+```
+
+### Provider factory methods
+
+```typescript
+// STT providers
+VoicePipeline.createDeepgramSTT(apiKey: string): STTProvider
+VoicePipeline.createOpenAISTT(apiKey: string): STTProvider
+
+// TTS providers
+VoicePipeline.createElevenLabsTTS(apiKey: string, voiceId?: string): TTSProvider
+VoicePipeline.createOpenAITTS(apiKey: string, voice?: string): TTSProvider
+```
+
+All provider factories lazy-import their SDKs — only required if installed:
+- Deepgram: `npm install @deepgram/sdk`
+- ElevenLabs: `npm install elevenlabs`
+- OpenAI STT/TTS: `npm install openai`
+
+### Custom STT/TTS
+
+Implement `STTProvider` and `TTSProvider` to use any provider:
+
+```typescript
+interface STTProvider {
+  transcribe(audioBuffer: Buffer, mimeType?: string): Promise<string>
+}
+
+interface TTSProvider {
+  synthesize(text: string): Promise<Buffer>
+}
+
+const mySTT: STTProvider = {
+  async transcribe(buffer) {
+    return myWhisperAPI.transcribe(buffer)
+  },
+}
+```
+
+### VoicePipelineConfig
+
+```typescript
+interface VoicePipelineConfig {
+  stt: STTProvider
+  tts: TTSProvider
+  agent: Agent
+  provider: Provider
+  model: ModelConfig
+  silenceThresholdMs?: number  // default 1500 — end of utterance detection
+}
 ```
 
 ---
