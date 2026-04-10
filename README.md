@@ -751,6 +751,37 @@ app.get('/api/run', async (req, res) => {
 })
 ```
 
+### Visualization
+Turn any `ExecutionResult` or `StateMachine` into Mermaid diagrams or a standalone HTML dashboard.
+
+```typescript
+import { executionToMermaid, traceToMermaidGantt, exportHTML, openInBrowser } from 'swarmwire'
+
+const result = await swarm.execute(plan)
+
+// Mermaid flowchart — status-colored nodes, dependency edges, cost + duration
+const diagram = executionToMermaid(result, { showCost: true, showDuration: true })
+// Paste into GitHub issues/PRs, Notion, Obsidian, VS Code — renders natively
+
+// Gantt timeline from trace spans
+const gantt = traceToMermaidGantt(result.trace, { title: 'Pipeline run' })
+
+// Self-contained HTML dashboard: DAG diagram, step table, cost breakdown
+await exportHTML(result, './reports/run.html', { title: 'Debug run' })
+
+// Open in system browser instantly (macOS/Linux/Windows)
+await openInBrowser(result)
+```
+
+State machines also export Mermaid directly:
+```typescript
+import { StateMachine, END } from 'swarmwire'
+
+const sm = new StateMachine({ nodes, edges, entryNode: 'draft' })
+console.log(sm.toMermaid())   // flowchart TD with blue entry, conditional edges
+console.log(sm.toDot())       // Graphviz DOT
+```
+
 ---
 
 ## Tools
@@ -1116,7 +1147,7 @@ User Code
 
 ## Project Stats
 
-110 modules · 71 test files · 621 tests · 17 agent templates
+111 modules · 72 test files · 638 tests · 17 agent templates
 
 ---
 
@@ -1124,12 +1155,17 @@ User Code
 
 | Guide | What it covers |
 |-------|---------------|
-| [Routing Stack](./docs/routing.md) | 5-layer cost optimization, cascade routing, semantic cache |
-| [Eval Workflow](./docs/eval-workflow.md) | Record → Replay → Eval → CI pipeline |
+| [Routing Stack](./docs/routing.md) | 5-layer cost optimization, trajectory reducer, speculative tools, OTel auto-export |
+| [Eval Workflow](./docs/eval-workflow.md) | Record → Replay → Eval → CI, EvalHarness, trajectory evaluation |
+| [Memory](./docs/memory.md) | All 10 memory backends — A-MEM, temporal, self-editing, episodic, procedural, vector stores |
+| [Sessions](./docs/sessions.md) | SessionManager, BranchManager, conversation forking |
+| [Tools](./docs/tools.md) | Code sandbox, browser, computer use, skill reducer, ReputationBoard |
+| [Patterns](./docs/patterns.md) | All 11 patterns with decision matrix |
+| [Visualization](./docs/visualization.md) | Mermaid diagrams, Gantt timeline, HTML dashboard |
+| [Persistence](./docs/persistence.md) | Checkpoint/resume, time-travel debugging, rollback |
+| [Adapters](./docs/adapters.md) | Claude Agent SDK, FileBoard, CognitiveVault, voice pipeline |
 | [SSE Streaming](./docs/sse-streaming.md) | Express, Fastify, Next.js, React recipes |
 | [Conflict Resolution](./docs/conflict-resolution.md) | Detection algorithms, resolution strategies |
-| [Persistence](./docs/persistence.md) | Checkpoint/resume, differential execution, state management |
-| [Adapters](./docs/adapters.md) | Claude Agent SDK, FileBoard, CognitiveVault |
 | [Plugins](./docs/plugins.md) | Plugin interface, middleware, publishing |
 | [CognitiveVault](./docs/cognitive-vault-integration.md) | CV-backed inter-agent messaging |
 
