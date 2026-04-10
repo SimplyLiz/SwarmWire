@@ -24,29 +24,36 @@ npm run clean                # Remove dist/
 | Module | Path | Purpose |
 |--------|------|---------|
 | **Types** | `src/types/` | All TypeScript interfaces — agent, budget, plan, task, execution, provider, tool, memory, pattern |
-| **Core** | `src/core/` | `Swarm` class, `createAgent()`, MCP tool loader, `MessageBoard` (inter-agent messaging), `stub-board` (no-op board for patterns), guardrails (input/output/tool guards with built-ins: PII, injection, hallucination, max-length, content-filter), output contracts (schema + semantic validation) |
+| **Core** | `src/core/` | `Swarm` class, `createAgent()`, MCP tool loader, `MessageBoard`, `ReputationBoard` (reputation-weighted board), `stub-board`, guardrails, output contracts |
 | **Budget** | `src/budget/` | `BudgetLedger` (hard enforcement), cost optimizer |
-| **Planner** | `src/planner/` | Task scorer, DAG builder, model router, adaptive router, cascade router, semantic cache, speculative cascade, query decomposer, latency router, **3-tier intelligent routing** |
-| **Executor** | `src/executor/` | Parallel DAG runner, checkpoint/resume, dry-run cost projection, differential execution |
-| **Patterns** | `src/patterns/` | Orchestrator-worker, pipeline, map-reduce, debate, blackboard |
-| **Providers** | `src/providers/` | Anthropic, OpenAI, Gemini, Ollama adapters, generic OpenAI-compatible (LiteLLM/vLLM), circuit breaker, failover, rate limiter, model cascade on quality |
+| **Planner** | `src/planner/` | Task scorer, DAG builder, model router, adaptive router, cascade router, semantic cache, speculative cascade, query decomposer, latency router, attention router, RL router, 3-tier routing |
+| **Executor** | `src/executor/` | Parallel DAG runner, checkpoint/resume, dry-run, differential execution, time-travel debugging, rollback manager, trajectory reducer (AgentDiet), speculative tool executor (PASTE) |
+| **Patterns** | `src/patterns/` | Orchestrator-worker, pipeline, map-reduce, debate, blackboard, fan-out, hive-mind, hierarchy, loop-agent |
+| **Providers** | `src/providers/` | Anthropic, OpenAI, Gemini, Ollama, generic OpenAI-compatible (LiteLLM/vLLM), circuit breaker, failover, rate limiter, model cascade on quality |
 | **Conflict** | `src/conflict/` | Contradiction detector (Jaccard/structural), resolver (vote/evidence/escalate) |
 | **Context** | `src/context/` | Token-budget-aware context packer |
-| **A2A** | `src/a2a/` | Agent2Agent protocol — server, client, agent cards |
+| **A2A** | `src/a2a/` | Agent2Agent protocol v1.0 — server, client, agent cards, contextId, streaming state, `tasks/sendSubscribe` |
 | **Pool** | `src/pool/` | Worker pool with lifecycle, concurrency, warm pooling |
-| **Trace** | `src/trace/` | Human-readable execution reports, DAG visualization |
-| **Workflow** | `src/workflow/` | YAML workflow parser + compiler to executable Plans |
-| **Templates** | `src/templates/` | 17 pre-built agent templates (researcher, code-reviewer, synthesizer, data-analyst, qa-tester, writer, planner, security-auditor, devops-engineer, database-engineer, api-designer, performance-engineer, documentation-specialist, architecture-advisor, debugger, refactoring-specialist, integration-specialist, test-automation-engineer) |
+| **Trace** | `src/trace/` | Human-readable execution reports, DAG visualization, OTel export (`toOTelSpans`, `toOTLPJson`), OTel auto-exporter (OTLP push) |
+| **Workflow** | `src/workflow/` | YAML workflow parser + compiler, event-driven workflows (`EventFlow`), graph state machine (`StateMachine`) |
+| **Templates** | `src/templates/` | 17 pre-built agent templates |
 | **Adapters** | `src/adapters/` | Claude Agent SDK wrapper |
-| **Orchestrator** | `src/orchestrator/` | Evolving orchestrator (bandit-based adaptive sequencing), **A/B testing engine**, **Judge agent for quality evaluation**, **Weight table for dynamic routing**, **Distillation collector for training pairs** |
+| **Orchestrator** | `src/orchestrator/` | Evolving orchestrator, A/B testing, judge agent, weight table, distillation collector |
 | **Persistence** | `src/persistence/` | Save/load state to disk or memory backend |
-| **Memory** | `src/memory/` | ANCS memory backend, **self-learning memory with EWC**, **vector memory with HNSW-like search** |
-| **Testing** | `src/testing/` | `RecordingProvider` (wraps real provider, saves fixtures), `ReplayProvider` (loads fixtures, zero-cost deterministic replay), evals framework |
-| **Optimizer** | `src/optimizer/` | Token optimizer with pattern caching, compression, and batch optimization |
-| **Workers** | `src/workers/` | Background worker system for continuous optimization (memory optimizer, pattern learner, metrics collector, cache cleanup, health check) |
-| **Security** | `src/security/` | Threat detection system (SQL/command/XSS injection, path traversal, hardcoded secrets, prompt injection, PII detection) |
-| **Spec** | `src/spec/` | Architecture Decision Records (ADRs) framework for spec-driven development |
-| **Graph** | `src/graph/` | Knowledge graph with PageRank-based importance, graph-enhanced ranked retrieval |
+| **Memory** | `src/memory/` | ANCS, self-learning (EWC), vector (HNSW-like), A-MEM (Zettelkasten graph), temporal (CMA decay), self-editing blocks (Letta), episodic, procedural, external vector store adapters (Pinecone/Qdrant/Redis/flat) |
+| **Session** | `src/session/` | Named persistent sessions, `SessionManager`, conversation branching (`BranchManager`) |
+| **Testing** | `src/testing/` | `RecordingProvider`, `ReplayProvider`, evals framework, `EvalHarness` (run history + regression), trajectory evaluation (TRACE) |
+| **Optimizer** | `src/optimizer/` | Token optimizer, prompt optimizer (DSPy-style) |
+| **Workers** | `src/workers/` | Background workers (memory optimizer, pattern learner, metrics, health check), sleep-time compute agent |
+| **Security** | `src/security/` | Threat detection (SQL/command/XSS injection, path traversal, secrets, prompt injection, PII) |
+| **Tools** | `src/tools/` | Code execution sandbox (Node vm / Docker / E2B), browser tool (Playwright), computer use (Anthropic), skill reducer (progressive disclosure) |
+| **Voice** | `src/voice/` | Voice agent pipeline (STT → LLM → TTS), Deepgram/ElevenLabs/OpenAI providers |
+| **Catalog** | `src/catalog/` | Agent discovery catalog with semantic search |
+| **Hooks** | `src/hooks/` | Hook registry, priority-ordered hooks, swarm event bridging |
+| **Consensus** | `src/consensus/` | Raft, Byzantine fault-tolerant, Gossip consensus |
+| **Federation** | `src/federation/` | Multi-swarm federation hub |
+| **Spec** | `src/spec/` | Architecture Decision Records (ADRs) |
+| **Graph** | `src/graph/` | Knowledge graph with PageRank, graph-enhanced retrieval |
 
 ### Data Flow
 
@@ -130,7 +137,7 @@ Task → Scorer → Planner (DAG) → Executor
 
 - All tests in `tests/unit/` — pure unit tests, no external services
 - Tests use mock providers that return canned responses
-- 29 test files, 265 tests
+- 71 test files, 621 tests
 - Run with `npm test`
 
 ## Peer Dependencies
