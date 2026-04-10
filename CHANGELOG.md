@@ -4,6 +4,23 @@ All notable changes to SwarmWire are documented here.
 
 ---
 
+## [1.6.0] — 2026-04-10
+
+### New Features
+
+**Visualization**
+- `executionToMermaid` — Mermaid `flowchart TD` from `ExecutionResult`. Status-colored nodes, dependency edges, cost + duration per step.
+- `traceToMermaidGantt` — Mermaid Gantt chart from `ExecutionTrace`. Per-step duration bars relative to execution start.
+- `stateMachineConfigToMermaid` — Mermaid flowchart from a StateMachine edge list.
+- `StateMachine.toMermaid()` — instance method alongside existing `toDot()`. Entry node styled blue, conditional edges labeled, END node styled dark.
+- `toHTML` — self-contained dark-theme HTML dashboard: summary cards (status, cost, tokens, duration, step count), interactive DAG diagram (Mermaid CDN), step table with status badges, per-agent cost breakdown.
+- `exportHTML` — write dashboard to a file.
+- `openInBrowser` — write to temp file and open with system default browser (macOS/Linux/Windows).
+
+Renders natively in GitHub issues/PRs/READMEs, Notion, Obsidian, VS Code, GitLab.
+
+---
+
 ## [1.5.0] — 2026-04-09
 
 ### New Features

@@ -54,6 +54,7 @@ npm run clean                # Remove dist/
 | **Federation** | `src/federation/` | Multi-swarm federation hub |
 | **Spec** | `src/spec/` | Architecture Decision Records (ADRs) |
 | **Graph** | `src/graph/` | Knowledge graph with PageRank, graph-enhanced retrieval |
+| **Viz** | `src/viz/` | Mermaid diagrams (`executionToMermaid`, `traceToMermaidGantt`), HTML dashboard (`toHTML`, `exportHTML`, `openInBrowser`), `StateMachine.toMermaid()` |
 
 ### Data Flow
 

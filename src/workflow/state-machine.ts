@@ -182,6 +182,30 @@ export class StateMachine<TState = Record<string, unknown>> {
     lines.push('}')
     return lines.join('\n')
   }
+
+  /** Visualize as Mermaid flowchart (renders in GitHub, Notion, Obsidian, VS Code) */
+  toMermaid(): string {
+    const lines = ['flowchart TD']
+    const hasEnd = [...this.edgeMap.values()].flat().some(
+      (e) => e.to === END || typeof e.to === 'function',
+    )
+
+    for (const [from, edges] of this.edgeMap) {
+      for (const edge of edges) {
+        const isConditional = typeof edge.to === 'function'
+        const to = isConditional ? '((conditional))' : (edge.to === END ? '([END])' : edge.to as string)
+        const label = edge.label ?? (isConditional ? 'conditional' : '')
+        const arrow = label ? ` -->|${label}|` : ' -->'
+        lines.push(`    ${from}${arrow} ${to}`)
+      }
+    }
+
+    lines.push('')
+    lines.push(`    style ${this.entryNode} fill:#1d4ed8,stroke:#1e40af,color:#fff`)
+    if (hasEnd) lines.push(`    style ([END]) fill:#374151,stroke:#1f2937,color:#fff`)
+
+    return lines.join('\n')
+  }
 }
 
 /**

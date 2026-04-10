@@ -349,3 +349,7 @@ export type { STTProvider, TTSProvider, VoicePipelineConfig, VoiceTurn } from '.
 // A2A — streamSubscribe
 export { streamSubscribe } from './a2a/client.js'
 export type { ContextId } from './a2a/types.js'
+
+// Visualization
+export { executionToMermaid, traceToMermaidGantt, stateMachineConfigToMermaid, toHTML, exportHTML, openInBrowser } from './viz/index.js'
+export type { VizConfig } from './viz/index.js'
